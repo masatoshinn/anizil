@@ -194,5 +194,5 @@ anizil/
 ---
 
 <p align="center">
-  <sub>built with ❤︎ by <a href="https://github.com/golammostofasadhin">golammostofasadhin</a></sub>
+  <sub>built with ❤︎ by <a href="https://github.com/masatoshinn">Masato 真</a></sub>
 </p>
