@@ -967,21 +967,43 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
         ) : (
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="flex-shrink-0 relative">
-              <div
-                className="w-24 h-24 rounded-full border-3 flex items-center justify-center overflow-hidden transition-all duration-500 frame-glow"
-                style={{
-                  borderColor: activeFrame?.border_color || '#0ea5e9',
-                  boxShadow: activeFrame ? `0 0 12px 3px ${activeFrame.border_color}60, 0 0 30px 6px ${activeFrame.border_color}30, inset 0 0 8px ${activeFrame.border_color}40` : '0 0 8px 2px rgba(14,165,233,0.3)',
-                  '--glow-color': activeFrame?.border_color || '#0ea5e9',
-                }}
-              >
-                {profile?.avatar || user?.avatar ? (
-                  <img src={profile?.avatar || user?.avatar} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-12 h-12 text-[#0ea5e9]" />
+                <div className="w-24 h-24 rounded-full border-3 flex items-center justify-center overflow-hidden transition-all duration-500"
+                  style={{
+                    borderColor: activeFrame?.border_color || '#0ea5e9',
+                    boxShadow: activeFrame ? `0 0 12px 3px ${activeFrame.border_color}60, 0 0 30px 6px ${activeFrame.border_color}30, inset 0 0 8px ${activeFrame.border_color}40` : '0 0 8px 2px rgba(14,165,233,0.3)',
+                  }}
+                >
+                  {profile?.avatar || user?.avatar ? (
+                    <img src={profile?.avatar || user?.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-12 h-12 text-[#0ea5e9]" />
+                  )}
+                </div>
+                {/* Frame badge overlay */}
+                {activeFrame && (
+                  <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full border-2 border-[#0f172a] overflow-hidden bg-[#1e293b] flex items-center justify-center"
+                    style={{ boxShadow: `0 0 8px ${activeFrame.border_color}80` }}>
+                    {activeFrame.image_url ? (
+                      <img src={activeFrame.image_url} alt={activeFrame.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full" style={{ backgroundColor: activeFrame.border_color }} />
+                    )}
+                  </div>
+                )}
+                {/* Multiple badges row at bottom of avatar */}
+                {(user?.badges?.length > 0) && (
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-0.5 bg-[#0f172a]/80 px-1.5 py-0.5 rounded-full backdrop-blur-sm">
+                    {user.badges.slice(0, 4).map((badge) => (
+                      <span key={badge.id} className="text-[10px]" title={`${badge.name}${badge.description ? ': ' + badge.description : ''}`}>
+                        {badge.icon}
+                      </span>
+                    ))}
+                    {user.badges.length > 4 && (
+                      <span className="text-[9px] text-[#94a3b8]">+{user.badges.length - 4}</span>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
             <div className="text-center sm:text-left flex-1">
               <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
                 <h3 className="text-xl font-bold text-[#f8fafc]">{profile?.name || user?.name || 'Anime Fan'}</h3>
@@ -1011,11 +1033,6 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
               </p>
               {profile?.email && <p className="text-sm text-[#94a3b8] mt-0.5">{profile.email}</p>}
               {profile?.bio && <p className="text-sm text-[#94a3b8] mt-1">{profile.bio}</p>}
-              {activeFrame && (
-                <p className="text-xs mt-1.5" style={{ color: activeFrame.border_color }}>
-                  Frame: {activeFrame.name}
-                </p>
-              )}
             </div>
           </div>
         )}
@@ -1046,13 +1063,15 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
                     : 'border-[rgba(148,163,184,0.12)] bg-[#0f172a] hover:border-[rgba(148,163,184,0.3)]'
                 )}
               >
-                <div className="w-12 h-12 rounded-full overflow-hidden border-2" style={{ borderColor: f.border_color }}>
+                <div className="w-12 h-12 rounded-full overflow-hidden border-2 flex items-center justify-center"
+                  style={{
+                    borderColor: activeFrameId === f.frame_id ? f.border_color : f.border_color,
+                    boxShadow: activeFrameId === f.frame_id ? `0 0 10px ${f.border_color}60` : 'none',
+                  }}>
                   {f.image_url ? (
                     <img src={f.image_url} alt={f.name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-[#1e293b] flex items-center justify-center">
-                      <Frame className="w-4 h-4 text-[#94a3b8]" />
-                    </div>
+                    <div className="w-6 h-6 rounded-full" style={{ backgroundColor: f.border_color }} />
                   )}
                 </div>
                 <span className="text-xs text-[#f8fafc] font-medium truncate w-full text-center">{f.name}</span>

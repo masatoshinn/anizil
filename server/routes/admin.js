@@ -1417,4 +1417,162 @@ router.put('/settings/ads', requirePermission('manage_settings'), async (req, re
   }
 });
 
+// ===== BADGE MANAGEMENT =====
+
+// Get all badges
+router.get('/badges', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [badges] = await pool.query('SELECT * FROM badges ORDER BY is_verified DESC, id ASC');
+    res.json({ success: true, data: badges });
+  } catch (error) {
+    console.error('Get badges error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Create a new badge
+router.post('/badges', requirePermission('manage_settings'), [
+  body('name').trim().notEmpty().withMessage('Badge name required'),
+  body('icon').trim().notEmpty().withMessage('Badge icon required'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+    const pool = await getPool();
+    const { name, icon, color = '#0ea5e9', description = '', is_verified = 0 } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO badges (name, icon, color, description, is_verified) VALUES (?, ?, ?, ?, ?)',
+      [name, icon, color, description, is_verified ? 1 : 0]
+    );
+    res.status(201).json({ success: true, data: { id: result.insertId } });
+  } catch (error) {
+    console.error('Create badge error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Update a badge
+router.put('/badges/:id', requirePermission('manage_settings'), async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+    const { name, icon, color, description, is_verified, is_active } = req.body;
+    const fields = []; const params = [];
+    if (name !== undefined) { fields.push('name = ?'); params.push(name); }
+    if (icon !== undefined) { fields.push('icon = ?'); params.push(icon); }
+    if (color !== undefined) { fields.push('color = ?'); params.push(color); }
+    if (description !== undefined) { fields.push('description = ?'); params.push(description); }
+    if (is_verified !== undefined) { fields.push('is_verified = ?'); params.push(is_verified ? 1 : 0); }
+    if (is_active !== undefined) { fields.push('is_active = ?'); params.push(is_active ? 1 : 0); }
+    if (fields.length === 0) return res.status(400).json({ success: false, message: 'No fields to update' });
+    params.push(id);
+    await pool.query(`UPDATE badges SET ${fields.join(', ')} WHERE id = ?`, params);
+    res.json({ success: true, message: 'Badge updated' });
+  } catch (error) {
+    console.error('Update badge error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Delete a badge
+router.delete('/badges/:id', requirePermission('manage_settings'), async (req, res) => {
+  try {
+    const pool = await getPool();
+    await pool.query('DELETE FROM badges WHERE id = ?', [req.params.id]);
+    res.json({ success: true, message: 'Badge deleted' });
+  } catch (error) {
+    console.error('Delete badge error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get badges for a specific user
+router.get('/users/:id/badges', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [badges] = await pool.query(
+      `SELECT b.*, ub.assigned_at, ub.assigned_by,
+        au.name as assigned_by_name
+       FROM user_badges ub
+       JOIN badges b ON ub.badge_id = b.id
+       LEFT JOIN users au ON ub.assigned_by = au.id
+       WHERE ub.user_id = ?
+       ORDER BY b.is_verified DESC, ub.assigned_at ASC`,
+      [req.params.id]
+    );
+    res.json({ success: true, data: badges });
+  } catch (error) {
+    console.error('Get user badges error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Assign badge to user
+router.post('/users/:id/badges', requirePermission('manage_users'), [
+  body('badge_id').isInt().withMessage('Badge ID required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+    const pool = await getPool();
+    const { badge_id } = req.body;
+    const [badges] = await pool.query('SELECT id, name FROM badges WHERE id = ?', [badge_id]);
+    if (badges.length === 0) return res.status(404).json({ success: false, message: 'Badge not found' });
+    const [existing] = await pool.query(
+      'SELECT id FROM user_badges WHERE user_id = ? AND badge_id = ?',
+      [req.params.id, badge_id]
+    );
+    if (existing.length > 0) return res.status(400).json({ success: false, message: 'User already has this badge' });
+    await pool.query(
+      'INSERT INTO user_badges (user_id, badge_id, assigned_by) VALUES (?, ?, ?)',
+      [req.params.id, badge_id, req.user.id]
+    );
+    const [users] = await pool.query('SELECT name FROM users WHERE id = ?', [req.params.id]);
+    await pool.query(
+      'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
+      [req.user.id, 'assign_badge', `Assigned "${badges[0].name}" badge to ${users[0]?.name || 'user'} #${req.params.id}`]
+    );
+    res.json({ success: true, message: 'Badge assigned!' });
+  } catch (error) {
+    console.error('Assign badge error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Remove badge from user
+router.delete('/users/:userId/badges/:badgeId', requirePermission('manage_users'), async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [result] = await pool.query(
+      'DELETE FROM user_badges WHERE user_id = ? AND badge_id = ?',
+      [req.params.userId, req.params.badgeId]
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Badge not assigned to user' });
+    res.json({ success: true, message: 'Badge removed' });
+  } catch (error) {
+    console.error('Remove badge error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Public: Get badges for current user
+router.get('/my-badges', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [badges] = await pool.query(
+      `SELECT b.*, ub.assigned_at
+       FROM user_badges ub
+       JOIN badges b ON ub.badge_id = b.id
+       WHERE ub.user_id = ? AND b.is_active = 1
+       ORDER BY b.is_verified DESC, ub.assigned_at ASC`,
+      [req.user.id]
+    );
+    res.json({ success: true, data: badges });
+  } catch (error) {
+    console.error('Get my badges error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

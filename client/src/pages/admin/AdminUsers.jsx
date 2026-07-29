@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { Search, Shield, Ban, Eye, ChevronDown, Loader2, UserX, UserCheck } from 'lucide-react';
+import { Search, Shield, Ban, Eye, ChevronDown, Loader2, UserX, UserCheck, Award, X } from 'lucide-react';
 import api from '../../lib/api';
 import { cn, formatDate } from '../../lib/utils';
 import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
+import toast from 'react-hot-toast';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -17,8 +18,14 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState('');
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Badge state
+  const [allBadges, setAllBadges] = useState([]);
+  const [userBadges, setUserBadges] = useState([]);
+  const [loadingBadges, setLoadingBadges] = useState(false);
 
   const { register, handleSubmit, reset } = useForm();
 
@@ -49,6 +56,38 @@ export default function AdminUsers() {
   const openBanModal = (user) => {
     setSelectedUser(user);
     setShowBanModal(true);
+  };
+
+  const openBadgeModal = async (user) => {
+    setSelectedUser(user);
+    setShowBadgeModal(true);
+    setLoadingBadges(true);
+    try {
+      const [badgesRes, userBadgesRes] = await Promise.all([
+        api.get('/admin/badges'),
+        api.get(`/admin/users/${user.id}/badges`)
+      ]);
+      setAllBadges(badgesRes.data.data || []);
+      setUserBadges(userBadgesRes.data.data || []);
+    } catch { toast.error('Failed to load badges'); }
+    setLoadingBadges(false);
+  };
+
+  const handleAssignBadge = async (badgeId) => {
+    try {
+      await api.post(`/admin/users/${selectedUser.id}/badges`, { badge_id: badgeId });
+      toast.success('Badge assigned!');
+      const res = await api.get(`/admin/users/${selectedUser.id}/badges`);
+      setUserBadges(res.data.data || []);
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+  };
+
+  const handleRemoveBadge = async (badgeId) => {
+    try {
+      await api.delete(`/admin/users/${selectedUser.id}/badges/${badgeId}`);
+      toast.success('Badge removed');
+      setUserBadges(prev => prev.filter(b => b.id !== badgeId));
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
   const changeRole = async (data) => {
@@ -163,6 +202,9 @@ export default function AdminUsers() {
                   <td className="px-4 py-3 text-[#94a3b8] hidden xl:table-cell">{formatDate(user.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => openBadgeModal(user)} className="p-1.5 rounded-lg hover:bg-yellow-500/10 text-[#94a3b8] hover:text-yellow-400 transition-colors" title="Manage badges">
+                        <Award className="w-4 h-4" />
+                      </button>
                       <button onClick={() => openRoleModal(user)} className="p-1.5 rounded-lg hover:bg-[#0ea5e9]/10 text-[#94a3b8] hover:text-[#0ea5e9] transition-colors" title="Change role">
                         <Shield className="w-4 h-4" />
                       </button>
@@ -219,6 +261,58 @@ export default function AdminUsers() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Badge Management Modal */}
+      <Modal isOpen={showBadgeModal} onClose={() => setShowBadgeModal(false)} title={`Badges - ${selectedUser?.name || ''}`} size="lg">
+        {loadingBadges ? (
+          <div className="space-y-3 p-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Current badges */}
+            <div>
+              <h4 className="text-sm font-medium text-[#f8fafc] mb-3">Current Badges ({userBadges.length})</h4>
+              {userBadges.length === 0 ? (
+                <p className="text-sm text-[#94a3b8]">No badges assigned yet</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {userBadges.map((badge) => (
+                    <div key={badge.id}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm"
+                      style={{ borderColor: `${badge.color}40`, backgroundColor: `${badge.color}10` }}>
+                      <span>{badge.icon}</span>
+                      <span className="text-[#f8fafc]">{badge.name}</span>
+                      <button onClick={() => handleRemoveBadge(badge.id)}
+                        className="text-[#94a3b8] hover:text-red-400 transition-colors ml-1">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Available badges to assign */}
+            <div>
+              <h4 className="text-sm font-medium text-[#f8fafc] mb-3">Available Badges</h4>
+              <div className="flex flex-wrap gap-2">
+                {allBadges.filter(b => !userBadges.some(ub => ub.id === b.id)).map((badge) => (
+                  <button key={badge.id} onClick={() => handleAssignBadge(badge.id)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-all hover:scale-105"
+                    style={{ borderColor: `${badge.color}30`, backgroundColor: `${badge.color}08` }}>
+                    <span>{badge.icon}</span>
+                    <span className="text-[#94a3b8]">{badge.name}</span>
+                  </button>
+                ))}
+                {allBadges.filter(b => !userBadges.some(ub => ub.id === b.id)).length === 0 && (
+                  <p className="text-sm text-[#94a3b8]">User has all available badges</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

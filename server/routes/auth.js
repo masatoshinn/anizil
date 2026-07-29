@@ -123,14 +123,31 @@ router.post('/register', [
       });
     }
 
+    // Auto-assign random anime avatar
+    let avatar = null;
+    try {
+      const avResponse = await fetch('https://anikotoapi.site/recent-anime?page=1&per_page=50');
+      if (avResponse.ok) {
+        const avData = await avResponse.json();
+        const avList = avData.data || [];
+        if (avList.length > 0) {
+          const randomAnime = avList[Math.floor(Math.random() * avList.length)];
+          avatar = randomAnime.poster || randomAnime.image || null;
+        }
+      }
+    } catch (e) {
+      // Fallback: use DiceBear avatar
+      avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}${Date.now()}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const referralCode = generateToken().substring(0, 8).toUpperCase();
 
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password, referral_code) VALUES (?, ?, ?, ?)',
-      [name, email, hashedPassword, referralCode]
+      'INSERT INTO users (name, email, password, avatar, referral_code) VALUES (?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, avatar, referralCode]
     );
 
     const token = jwt.sign({ id: result.insertId }, process.env.JWT_SECRET, {
@@ -289,10 +306,20 @@ router.get('/me', auth, async (req, res) => {
       [req.user.id]
     );
 
+    const [badges] = await pool.query(
+      `SELECT b.*, ub.assigned_at
+       FROM user_badges ub
+       JOIN badges b ON ub.badge_id = b.id
+       WHERE ub.user_id = ? AND b.is_active = 1
+       ORDER BY b.is_verified DESC, ub.assigned_at ASC`,
+      [req.user.id]
+    );
+
     res.json({
       success: true,
       data: {
         ...req.user,
+        badges,
         stats: {
           watchlist: watchlistCount[0].count,
           watched: historyCount[0].count,

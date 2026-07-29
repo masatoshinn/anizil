@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Coins, Gift, Crown, CreditCard, CheckCircle, Star, Package, Tag, ArrowRight,
-  Frame, Shield, Award, Sparkles,
+  Frame, Shield, Award, Sparkles, BadgeCheck,
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useSettingsStore from '../store/settingsStore';
@@ -39,11 +39,25 @@ export default function ShopPage() {
   const [purchasedFrames, setPurchasedFrames] = useState(new Set());
   const [buyingFrame, setBuyingFrame] = useState(null);
 
+  // Badge state
+  const [badges, setBadges] = useState([]);
+  const [badgesLoading, setBadgesLoading] = useState(false);
+
   useEffect(() => {
     loadFrames();
+    loadBadges();
     if (!fetched) fetchSettings();
     setLoading(false);
   }, [isAuthenticated]);
+
+  const loadBadges = async () => {
+    setBadgesLoading(true);
+    try {
+      const res = await api.get('/admin/badges');
+      setBadges(res.data.data || []);
+    } catch {}
+    setBadgesLoading(false);
+  };
 
   const loadFrames = async () => {
     try {
@@ -148,6 +162,42 @@ export default function ShopPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* Available Badges */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-[#f8fafc] mb-2 flex items-center gap-2">
+            <BadgeCheck className="w-6 h-6 text-[#0ea5e9]" /> Badges
+          </h2>
+          <p className="text-[#94a3b8] text-sm mb-6">Earn badges by contributing to the community. Admins assign badges to recognize members.</p>
+          {badgesLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+            </div>
+          ) : badges.length > 0 ? (
+            <motion.div variants={container} initial="hidden" whileInView="show" viewport={{ once: true }}
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {badges.map((badge) => (
+                <motion.div key={badge.id} variants={fadeIn}
+                  className="bg-[#1e293b] border border-[rgba(148,163,184,0.12)] rounded-xl p-4 text-center hover:scale-[1.02] transition-all">
+                  <div className="w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center text-2xl"
+                    style={{ backgroundColor: `${badge.color}20` }}>
+                    {badge.icon}
+                  </div>
+                  <h3 className="text-sm font-bold text-[#f8fafc] mb-1">{badge.name}</h3>
+                  {badge.description && (
+                    <p className="text-[10px] text-[#94a3b8]">{badge.description}</p>
+                  )}
+                  {badge.is_verified ? (
+                    <span className="inline-flex items-center gap-0.5 mt-1 text-[10px] font-bold"
+                      style={{ color: badge.color }}>
+                      ✓ Official Badge
+                    </span>
+                  ) : null}
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : null}
         </section>
 
         {/* XP Packs */}

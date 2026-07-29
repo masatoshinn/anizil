@@ -34,6 +34,7 @@ const sidebarItems = [
   { icon: MessageSquare, label: 'Comments', path: '/admin/comments', permission: 'comments' },
   { icon: AlertTriangle, label: 'Reports', path: '/admin/reports', permission: 'comments' },
   { icon: Users, label: 'User Management', path: '/admin/users', permission: 'user_manage' },
+  { icon: Shield, label: 'Badges', path: '/admin/badges', permission: 'user_manage' },
   { icon: Megaphone, label: 'Ad Management', path: '/admin/ads', permission: 'website_settings' },
   { icon: Shield, label: 'Role Management', path: '/admin/roles', permission: 'role_manage' },
   { icon: Gift, label: 'Redeem Codes', path: '/admin/redeem', permission: 'add_anime' },

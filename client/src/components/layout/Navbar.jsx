@@ -13,9 +13,11 @@ import {
   ChevronDown,
   Crown,
   Shield,
+  Sparkles,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useSettingsStore from '../../store/settingsStore';
+import api from '../../lib/api';
 
 const baseLinks = [
   { label: 'Home', path: '/' },
@@ -29,6 +31,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeFrame, setActiveFrame] = useState(null);
   const userRef = useRef(null);
   const navigate = useNavigate();
 
@@ -39,6 +42,28 @@ export default function Navbar() {
   useEffect(() => {
     if (!fetched) fetchSettings();
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadActiveFrame();
+    }
+  }, [isLoggedIn]);
+
+  const loadActiveFrame = async () => {
+    try {
+      const res = await api.get('/shop/frames/my');
+      const data = res.data.data || {};
+      const frameId = data.active_frame_id;
+      if (frameId) {
+        const frame = (data.frames || []).find(f => f.frame_id === frameId);
+        setActiveFrame(frame || null);
+      } else {
+        setActiveFrame(null);
+      }
+    } catch {
+      setActiveFrame(null);
+    }
+  };
 
   const navLinks = fetched && !premiumEnabled
     ? baseLinks
@@ -139,23 +164,38 @@ export default function Navbar() {
                   onClick={() => setUserOpen(!userOpen)}
                   className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-panel transition-colors"
                 >
-                  <div className="relative">
-                    <img
-                      src={user?.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user?.name || 'User') + '&background=0ea5e9&color=fff'}
-                      alt="avatar"
-                      className="w-7 h-7 rounded-full object-cover"
+                  <div className="relative group">
+                    <div className="w-7 h-7 rounded-full overflow-hidden"
                       style={{
-                        boxShadow: user?.role === 'super_admin'
-                          ? '0 0 8px 2px rgba(168,85,247,0.5)'
-                          : user?.role === 'content_admin'
-                            ? '0 0 8px 2px rgba(14,165,233,0.5)'
-                            : user?.role === 'moderator'
-                              ? '0 0 8px 2px rgba(34,197,94,0.5)'
-                              : 'none',
+                        border: activeFrame ? `2px solid ${activeFrame.border_color}` : '2px solid transparent',
+                        boxShadow: activeFrame ? `0 0 8px ${activeFrame.border_color}60` : 'none',
                       }}
-                    />
-                    {user?.role && user.role !== 'user' && (
-                      <span className="absolute -bottom-1 -right-1 text-[8px] leading-none">
+                    >
+                      <img
+                        src={user?.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user?.name || 'User') + '&background=0ea5e9&color=fff'}
+                        alt="avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {/* Badges stack on avatar */}
+                    {user?.badges && user.badges.length > 0 && (
+                      <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                        {user.badges.slice(0, 3).map((badge) => (
+                          <span
+                            key={badge.id}
+                            className="text-[9px] leading-none drop-shadow-lg"
+                            title={badge.name}
+                          >
+                            {badge.icon}
+                          </span>
+                        ))}
+                        {user.badges.length > 3 && (
+                          <span className="text-[8px] text-[#94a3b8] leading-none">+{user.badges.length - 3}</span>
+                        )}
+                      </div>
+                    )}
+                    {user?.role && user.role !== 'user' && !user?.badges?.some(b => b.is_verified) && (
+                      <span className="absolute -top-1 -right-1 text-[8px] leading-none">
                         {user.role === 'super_admin' ? '👑' : user.role === 'content_admin' ? '📝' : '🛡️'}
                       </span>
                     )}
@@ -183,6 +223,22 @@ export default function Navbar() {
                           {user?.name}
                         </p>
                         <p className="text-xs text-text-muted truncate">{user?.email}</p>
+                        {user?.badges && user.badges.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                            {user.badges.slice(0, 5).map((badge) => (
+                              <span key={badge.id}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                                style={{ backgroundColor: `${badge.color}20`, color: badge.color }}
+                                title={badge.description || badge.name}
+                              >
+                                {badge.icon} {badge.name}
+                              </span>
+                            ))}
+                            {user.badges.length > 5 && (
+                              <span className="text-[10px] text-[#94a3b8]">+{user.badges.length - 5}</span>
+                            )}
+                          </div>
+                        )}
                         {isAdmin && (
                           <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs bg-primary/15 text-primary font-medium">
                             <Shield className="w-3 h-3" />

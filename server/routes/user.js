@@ -502,4 +502,23 @@ router.put('/notifications/read', auth, async (req, res) => {
   }
 });
 
+// Get current user's badges
+router.get('/badges', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [badges] = await pool.query(
+      `SELECT b.*, ub.assigned_at
+       FROM user_badges ub
+       JOIN badges b ON ub.badge_id = b.id
+       WHERE ub.user_id = ? AND b.is_active = 1
+       ORDER BY b.is_verified DESC, ub.assigned_at ASC`,
+      [req.user.id]
+    );
+    res.json({ success: true, data: badges });
+  } catch (error) {
+    console.error('Get badges error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

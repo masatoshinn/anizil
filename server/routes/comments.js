@@ -54,6 +54,29 @@ router.get('/', async (req, res) => {
          LIMIT 5`,
         [comment.id]
       );
+
+      // Fetch badges for each comment author
+      const [badges] = await pool.query(
+        `SELECT b.id, b.name, b.icon, b.color, b.is_verified
+         FROM user_badges ub
+         JOIN badges b ON ub.badge_id = b.id
+         WHERE ub.user_id = ? AND b.is_active = 1
+         ORDER BY b.is_verified DESC`,
+        [comment.user_id]
+      );
+      comment.badges = badges;
+
+      for (let reply of replies) {
+        const [replyBadges] = await pool.query(
+          `SELECT b.id, b.name, b.icon, b.color, b.is_verified
+           FROM user_badges ub
+           JOIN badges b ON ub.badge_id = b.id
+           WHERE ub.user_id = ? AND b.is_active = 1
+           ORDER BY b.is_verified DESC`,
+          [reply.user_id]
+        );
+        reply.badges = replyBadges;
+      }
       comment.replies = replies;
 
       const [replyCount] = await pool.query(
@@ -118,6 +141,28 @@ router.get('/:episodeId', async (req, res) => {
          LIMIT 5`,
         [comment.id]
       );
+
+      const [badges] = await pool.query(
+        `SELECT b.id, b.name, b.icon, b.color, b.is_verified
+         FROM user_badges ub
+         JOIN badges b ON ub.badge_id = b.id
+         WHERE ub.user_id = ? AND b.is_active = 1
+         ORDER BY b.is_verified DESC`,
+        [comment.user_id]
+      );
+      comment.badges = badges;
+
+      for (let reply of replies) {
+        const [replyBadges] = await pool.query(
+          `SELECT b.id, b.name, b.icon, b.color, b.is_verified
+           FROM user_badges ub
+           JOIN badges b ON ub.badge_id = b.id
+           WHERE ub.user_id = ? AND b.is_active = 1
+           ORDER BY b.is_verified DESC`,
+          [reply.user_id]
+        );
+        reply.badges = replyBadges;
+      }
       comment.replies = replies;
 
       const [replyCount] = await pool.query(

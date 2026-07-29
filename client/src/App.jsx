@@ -40,6 +40,7 @@ import AdminRedeem from './pages/admin/AdminRedeem';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminApi from './pages/admin/AdminApi';
+import AdminBadges from './pages/admin/AdminBadges';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -176,6 +177,7 @@ function App() {
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/analytics" element={<AdminAnalytics />} />
               <Route path="/admin/api" element={<AdminApi />} />
+              <Route path="/admin/badges" element={<AdminBadges />} />
             </Route>
 
             {/* Moderator Routes (uses same admin layout) */}

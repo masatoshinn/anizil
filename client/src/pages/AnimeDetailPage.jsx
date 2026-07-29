@@ -448,29 +448,55 @@ export default function AnimeDetailPage() {
                 {comments.map((comment) => (
                   <div key={comment.id || comment._id} className="bg-panel border border-border-custom rounded-lg p-4">
                     <div className="flex items-start gap-3">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden"
-                        style={{
-                          background: comment.user_avatar ? 'transparent' : `${comment.frame_color || '#0ea5e9'}20`,
-                          color: comment.frame_color || '#0ea5e9',
-                          borderColor: comment.frame_color || '#0ea5e9',
-                          border: `1.5px solid ${comment.frame_color || '#0ea5e9'}`,
-                          boxShadow: comment.frame_color ? `0 0 6px ${comment.frame_color}50` : 'none',
-                        }}
-                      >
-                        {comment.user_avatar ? (
-                          <img src={comment.user_avatar} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          (comment.user_name || 'U')[0].toUpperCase()
+                      <div className="relative flex-shrink-0">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden"
+                          style={{
+                            background: comment.user_avatar ? 'transparent' : `${comment.frame_color || '#0ea5e9'}20`,
+                            color: comment.frame_color || '#0ea5e9',
+                            border: `1.5px solid ${comment.frame_color || '#0ea5e9'}`,
+                            boxShadow: comment.frame_color ? `0 0 6px ${comment.frame_color}50` : 'none',
+                          }}
+                        >
+                          {comment.user_avatar ? (
+                            <img src={comment.user_avatar} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            (comment.user_name || 'U')[0].toUpperCase()
+                          )}
+                        </div>
+                        {comment.frame_name && (
+                          <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border border-[#0f172a] overflow-hidden bg-[#1e293b] flex items-center justify-center"
+                            style={{ boxShadow: `0 0 6px ${comment.frame_color || '#0ea5e9'}80` }}>
+                            {comment.frame_image ? (
+                              <img src={comment.frame_image} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full" style={{ backgroundColor: comment.frame_color || '#0ea5e9' }} />
+                            )}
+                          </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-text-primary text-sm font-medium">{comment.user_name || 'Anonymous'}</span>
-                          {comment.frame_name && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: `${comment.frame_color}20`, color: comment.frame_color, border: `1px solid ${comment.frame_color}30` }}>
-                              {comment.frame_name}
-                            </span>
+                          {/* Show first 3 badges inline */}
+                          {comment.badges && comment.badges.length > 0 && (
+                            <div className="flex items-center gap-0.5">
+                              {comment.badges.slice(0, 3).map((badge) => {
+                                const isVerified = badge.is_verified || badge.name === 'Verified';
+                                return isVerified ? (
+                                  <span key={badge.id} className="inline-flex items-center justify-center w-4 h-4 rounded-full"
+                                    style={{ backgroundColor: badge.color }}
+                                    title={`Verified: ${badge.name}`}>
+                                    <span className="text-[9px] text-white font-bold">✓</span>
+                                  </span>
+                                ) : (
+                                  <span key={badge.id} className="text-[11px]" title={badge.name}>{badge.icon}</span>
+                                );
+                              })}
+                              {comment.badges.length > 3 && (
+                                <span className="text-[9px] text-[#94a3b8]">+{comment.badges.length - 3}</span>
+                              )}
+                            </div>
                           )}
                           <span className="text-text-muted text-xs">{formatDate(comment.created_at || comment.createdAt)}</span>
                         </div>
