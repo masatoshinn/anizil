@@ -271,4 +271,146 @@ router.post('/posts/:id/like', auth, async (req, res) => {
   }
 });
 
+router.put('/posts/:id', auth, [
+  body('title').optional().trim().notEmpty().withMessage('Title cannot be empty'),
+  body('content').optional().trim().notEmpty().withMessage('Content cannot be empty'),
+  body('category').optional().isIn(['general', 'recommendations', 'discussion', 'help']).withMessage('Invalid category')
+], async (req, res) => {
+  try {
+    const pool = await getPool();
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { id } = req.params;
+    const { title, content, category } = req.body;
+
+    const [posts] = await pool.query('SELECT * FROM forum_posts WHERE id = ?', [id]);
+    if (posts.length === 0) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    const isAdmin = ['super_admin', 'content_admin', 'moderator'].includes(req.user.role);
+    if (posts[0].user_id !== req.user.id && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'You can only edit your own posts' });
+    }
+
+    const updates = [];
+    const params = [];
+    if (title !== undefined) { updates.push('title = ?'); params.push(title); }
+    if (content !== undefined) { updates.push('content = ?'); params.push(content); }
+    if (category !== undefined) { updates.push('category = ?'); params.push(category); }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+
+    updates.push('updated_at = NOW()');
+    params.push(id);
+    await pool.query(`UPDATE forum_posts SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    const [updatedPost] = await pool.query(
+      `SELECT fp.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+       FROM forum_posts fp JOIN users u ON fp.user_id = u.id
+       WHERE fp.id = ?`, [id]
+    );
+
+    res.json({ success: true, data: updatedPost[0] });
+  } catch (error) {
+    console.error('Edit forum post error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.delete('/posts/:id', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+
+    const [posts] = await pool.query('SELECT user_id FROM forum_posts WHERE id = ?', [id]);
+    if (posts.length === 0) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    const isAdmin = ['super_admin', 'content_admin', 'moderator'].includes(req.user.role);
+    if (posts[0].user_id !== req.user.id && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own posts' });
+    }
+
+    await pool.query('DELETE FROM forum_replies WHERE post_id = ?', [id]);
+    await pool.query('DELETE FROM forum_posts WHERE id = ?', [id]);
+
+    res.json({ success: true, message: 'Post deleted' });
+  } catch (error) {
+    console.error('Delete forum post error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.put('/replies/:id', auth, [
+  body('content').trim().notEmpty().withMessage('Content is required')
+], async (req, res) => {
+  try {
+    const pool = await getPool();
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: 'Validation errors', errors: errors.array() });
+    }
+
+    const { id } = req.params;
+    const { content } = req.body;
+
+    const [replies] = await pool.query('SELECT * FROM forum_replies WHERE id = ?', [id]);
+    if (replies.length === 0) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    const isAdmin = ['super_admin', 'content_admin', 'moderator'].includes(req.user.role);
+    if (replies[0].user_id !== req.user.id && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'You can only edit your own replies' });
+    }
+
+    await pool.query('UPDATE forum_replies SET content = ?, updated_at = NOW() WHERE id = ?', [content, id]);
+
+    const [updatedReply] = await pool.query(
+      `SELECT fr.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+       FROM forum_replies fr JOIN users u ON fr.user_id = u.id
+       WHERE fr.id = ?`, [id]
+    );
+
+    res.json({ success: true, data: updatedReply[0] });
+  } catch (error) {
+    console.error('Edit reply error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.delete('/replies/:id', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+
+    const [replies] = await pool.query('SELECT user_id FROM forum_replies WHERE id = ?', [id]);
+    if (replies.length === 0) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    const isAdmin = ['super_admin', 'content_admin', 'moderator'].includes(req.user.role);
+    if (replies[0].user_id !== req.user.id && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own replies' });
+    }
+
+    await pool.query('DELETE FROM forum_replies WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Reply deleted' });
+  } catch (error) {
+    console.error('Delete reply error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

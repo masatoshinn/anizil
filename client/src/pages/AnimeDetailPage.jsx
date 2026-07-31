@@ -13,6 +13,7 @@ import AnimeCard from '../components/common/AnimeCard';
 import Skeleton from '../components/common/Skeleton';
 import GenreTag from '../components/common/GenreTag';
 import { cn, formatDate, formatNumber, getStatusColor } from '../lib/utils';
+import useSEO from '../hooks/useSEO';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,12 @@ export default function AnimeDetailPage() {
   const { user, isAuthenticated } = useAuthStore();
   const { premiumEnabled, fetched, fetchSettings } = useSettingsStore();
   const isAdmin = user && ['super_admin', 'content_admin', 'moderator'].includes(user.role);
+
+  useSEO({
+    title: currentAnime?.title || 'Anime Details',
+    description: currentAnime?.synopsis ? `${currentAnime.synopsis.slice(0, 160)}...` : undefined,
+    image: currentAnime?.poster || undefined,
+  });
 
   const [episodeView, setEpisodeView] = useState('grid');
   const [episodePage, setEpisodePage] = useState(1);
@@ -477,7 +484,16 @@ export default function AnimeDetailPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-text-primary text-sm font-medium">{comment.user_name || 'Anonymous'}</span>
+                          {comment.user_id ? (
+                            <Link
+                              to={`/user/${comment.user_id}`}
+                              className="text-text-primary text-sm font-medium hover:text-primary transition-colors"
+                            >
+                              {comment.user_name || 'Anonymous'}
+                            </Link>
+                          ) : (
+                            <span className="text-text-primary text-sm font-medium">{comment.user_name || 'Anonymous'}</span>
+                          )}
                           {/* Show first 3 badges inline */}
                           {comment.badges && comment.badges.length > 0 && (
                             <div className="flex items-center gap-0.5">

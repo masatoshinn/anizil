@@ -20,6 +20,14 @@ app.use(passport.initialize());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Rate limiting
+const { apiLimiter } = require('./middleware/rateLimit');
+app.use('/api', apiLimiter);
+
+// Visitor logging (fire-and-forget, skip API/static)
+const visitLog = require('./middleware/visitLog');
+app.use(visitLog);
+
 // API Routes
 const authRoutes = require('./routes/auth');
 const animeRoutes = require('./routes/anime');
@@ -31,6 +39,7 @@ const adminRoutes = require('./routes/admin');
 const importRoutes = require('./routes/import');
 const searchRoutes = require('./routes/search');
 const shopRoutes = require('./routes/shop');
+const contactRoutes = require('./routes/contact');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/anime', animeRoutes);
@@ -42,6 +51,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/shop', shopRoutes);
+app.use('/api/contact', contactRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

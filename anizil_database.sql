@@ -1,6 +1,7 @@
 -- =============================================
 -- Anizil Database - Full Setup
 
+SET NAMES utf8mb4;
 
 -- =============================================
 -- TABLES
@@ -20,6 +21,13 @@ CREATE TABLE IF NOT EXISTS users (
   premium_until DATETIME DEFAULT NULL,
   referral_code VARCHAR(20) DEFAULT NULL,
   referred_by INT DEFAULT NULL,
+  active_frame_id INT DEFAULT NULL,
+  google_id VARCHAR(255) DEFAULT NULL,
+  email_verified TINYINT(1) DEFAULT 1,
+  verify_token VARCHAR(255) DEFAULT NULL,
+  verify_token_expiry DATETIME DEFAULT NULL,
+  reset_token VARCHAR(255) DEFAULT NULL,
+  reset_token_expiry DATETIME DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -246,8 +254,27 @@ CREATE TABLE IF NOT EXISTS user_purchased_anime (
   UNIQUE KEY unique_user_anime (user_id, anime_id)
 );
 
-ALTER TABLE users ADD COLUMN IF NOT EXISTS active_frame_id INT DEFAULT NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) DEFAULT NULL;
+CREATE TABLE IF NOT EXISTS badges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  icon VARCHAR(10) NOT NULL DEFAULT '⭐',
+  color VARCHAR(20) NOT NULL DEFAULT '#0ea5e9',
+  description VARCHAR(255) DEFAULT '',
+  is_verified TINYINT(1) DEFAULT 0,
+  is_active TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_badges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  badge_id INT NOT NULL,
+  assigned_by INT DEFAULT NULL,
+  assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_badge (user_id, badge_id)
+);
 
 CREATE TABLE IF NOT EXISTS visitor_log (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -331,9 +358,54 @@ INSERT INTO profile_frames (name, image_url, price_xp, rarity, border_color, sor
 -- =============================================
 -- ALTER TABLES for existing databases
 -- =============================================
-SET @dbname = DATABASE();
+-- AUTO-LOGOUT FIX:
+-- The auth middleware runs:
+--   SELECT id, name, email, avatar, role, is_banned, xp, level, premium_until,
+--          active_frame_id, email_verified, created_at FROM users WHERE id = ?
+-- and /auth/me runs queries against badges / user_badges.
+-- If any of these columns/tables are missing, every authenticated request throws
+-- an SQL error -> API returns 401/500 -> the client clears the token -> you are
+-- logged out right after logging in. This section guarantees they all exist.
+-- (Uses "ADD COLUMN IF NOT EXISTS" — works on MariaDB 10.0+ and MySQL 8.0.29+,
+-- requires no INFORMATION_SCHEMA access.)
+-- =============================================
 
-SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = 'users' AND COLUMN_NAME = 'active_frame_id';
-SET @sql = IF(@col_exists = 0, 'ALTER TABLE users ADD COLUMN active_frame_id INT DEFAULT NULL', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CREATE TABLE IF NOT EXISTS badges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  icon VARCHAR(10) NOT NULL DEFAULT '⭐',
+  color VARCHAR(20) NOT NULL DEFAULT '#0ea5e9',
+  description VARCHAR(255) DEFAULT '',
+  is_verified TINYINT(1) DEFAULT 0,
+  is_active TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_badges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  badge_id INT NOT NULL,
+  assigned_by INT DEFAULT NULL,
+  assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_badge (user_id, badge_id)
+);
+
+-- episode_sources: ensure embed_link and source_type columns exist.
+-- Older schemas are missing them, so any "INSERT INTO episode_sources (... embed_link ...)"
+-- fails with "Unknown column 'embed_link' in 'INSERT INTO'".
+ALTER TABLE episode_sources ADD COLUMN IF NOT EXISTS embed_link VARCHAR(1000) DEFAULT NULL;
+ALTER TABLE episode_sources ADD COLUMN IF NOT EXISTS source_type ENUM('embed','url') DEFAULT 'embed';
+
+-- anime: ensure is_premium exists (referenced by INSERT INTO anime in admin/import code)
+ALTER TABLE anime ADD COLUMN IF NOT EXISTS is_premium TINYINT(1) DEFAULT 0;
+
+-- users: every column used by the login/auth flow (fixes auto-logout)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active_frame_id INT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TINYINT(1) DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token VARCHAR(255) DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token_expiry DATETIME DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255) DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expiry DATETIME DEFAULT NULL;

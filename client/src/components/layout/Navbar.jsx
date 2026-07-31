@@ -14,6 +14,10 @@ import {
   Crown,
   Shield,
   Sparkles,
+  Eye,
+  Bell,
+  CheckCheck,
+  Loader2,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useSettingsStore from '../../store/settingsStore';
@@ -25,14 +29,19 @@ const baseLinks = [
   { label: 'Schedule', path: '/schedule' },
   { label: 'Forum', path: '/forum' },
   { label: 'Shop', path: '/shop' },
+  { label: 'Leaderboard', path: '/leaderboard' },
 ];
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeFrame, setActiveFrame] = useState(null);
   const userRef = useRef(null);
+  const notifRef = useRef(null);
   const navigate = useNavigate();
 
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -65,6 +74,31 @@ export default function Navbar() {
     }
   };
 
+  const loadNotifications = async () => {
+    setNotifLoading(true);
+    try {
+      const res = await api.get('/user/notifications');
+      setNotifications(res.data.data?.notifications || []);
+    } catch {
+      setNotifications([]);
+    }
+    setNotifLoading(false);
+  };
+
+  const markAllRead = async () => {
+    try {
+      await api.put('/user/notifications/read');
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+      if (user) {
+        useAuthStore.setState({ user: { ...user, stats: { ...(user.stats || {}), unread_notifications: 0 } } });
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) loadNotifications();
+  }, [isLoggedIn]);
+
   const navLinks = fetched && !premiumEnabled
     ? baseLinks
     : [...baseLinks, { label: 'Premium', path: '/premium' }];
@@ -81,6 +115,9 @@ export default function Navbar() {
     const handleClick = (e) => {
       if (userRef.current && !userRef.current.contains(e.target)) {
         setUserOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -157,6 +194,64 @@ export default function Navbar() {
             >
               <Search className="w-5 h-5 text-text-muted" />
             </Link>
+
+            {isLoggedIn && (
+              <div ref={notifRef} className="relative">
+                <button
+                  onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) loadNotifications(); }}
+                  className="relative p-2 rounded-lg hover:bg-panel transition-colors"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-5 h-5 text-text-muted" />
+                  {user?.stats?.unread_notifications > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#ef4444] text-white text-[9px] font-bold flex items-center justify-center">
+                      {user.stats.unread_notifications > 9 ? '9+' : user.stats.unread_notifications}
+                    </span>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {notifOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      className="absolute right-0 mt-2 w-80 bg-panel border border-border-custom rounded-xl shadow-2xl overflow-hidden z-50"
+                    >
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-border-custom">
+                        <span className="text-sm font-semibold text-text-primary">Notifications</span>
+                        {user?.stats?.unread_notifications > 0 && (
+                          <button onClick={markAllRead} className="flex items-center gap-1 text-xs text-[#0ea5e9] hover:underline">
+                            <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-[320px] overflow-y-auto">
+                        {notifLoading ? (
+                          <div className="flex justify-center py-6">
+                            <Loader2 className="w-6 h-6 text-[#0ea5e9] animate-spin" />
+                          </div>
+                        ) : notifications.length === 0 ? (
+                          <p className="text-center text-sm text-text-muted py-6">No notifications yet</p>
+                        ) : (
+                          notifications.map((n) => (
+                            <button
+                              key={n.id}
+                              onClick={() => { setNotifOpen(false); navigate('/dashboard'); }}
+                              className={`w-full text-left px-4 py-3 hover:bg-panel-hover transition-colors ${!n.is_read ? 'bg-[#0ea5e9]/5' : ''}`}
+                            >
+                              <p className={`text-sm ${!n.is_read ? 'text-text-primary font-medium' : 'text-text-muted'}`}>{n.title}</p>
+                              <p className="text-xs text-text-muted line-clamp-2 mt-0.5">{n.content}</p>
+                              <p className="text-[10px] text-text-muted mt-1">{new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             {isLoggedIn ? (
               <div ref={userRef} className="relative">
@@ -256,6 +351,11 @@ export default function Navbar() {
                           icon={<User className="w-4 h-4" />}
                           label="My Profile"
                           onClick={() => { navigate('/dashboard?tab=profile'); setUserOpen(false); }}
+                        />
+                        <DropdownLink
+                          icon={<Eye className="w-4 h-4" />}
+                          label="Public Profile"
+                          onClick={() => { navigate(`/user/${user?.id}`); setUserOpen(false); }}
                         />
                         <DropdownLink
                           icon={<Heart className="w-4 h-4" />}

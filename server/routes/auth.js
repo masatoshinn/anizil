@@ -7,62 +7,73 @@ const { body, validationResult } = require('express-validator');
 const { getPool } = require('../config/database');
 const auth = require('../middleware/auth');
 const { generateToken } = require('../utils/helpers');
+const { sendPasswordReset, sendVerification, mailEnabled } = require('../utils/mailer');
 
 const router = express.Router();
 
+const googleOAuthEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
 // Google OAuth Strategy
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID || '',
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-  callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3001/api/auth/google/callback',
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    const pool = await getPool();
-    const email = profile.emails?.[0]?.value || `${profile.id}@google.user`;
-    const name = profile.displayName || profile.username || 'Google User';
-    const avatar = profile.photos?.[0]?.value || null;
+if (googleOAuthEnabled) {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3001/api/auth/google/callback',
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      const pool = await getPool();
+      const email = profile.emails?.[0]?.value || `${profile.id}@google.user`;
+      const name = profile.displayName || profile.username || 'Google User';
+      const avatar = profile.photos?.[0]?.value || null;
 
-    const [existing] = await pool.query(
-      'SELECT * FROM users WHERE (email = ? OR google_id = ?)',
-      [email, profile.id]
-    );
+      const [existing] = await pool.query(
+        'SELECT * FROM users WHERE (email = ? OR google_id = ?)',
+        [email, profile.id]
+      );
 
-    if (existing.length > 0) {
-      const user = existing[0];
-      if (user.google_id !== profile.id) {
-        await pool.query('UPDATE users SET google_id = ?, avatar = COALESCE(?, avatar) WHERE id = ?', [profile.id, avatar, user.id]);
+      if (existing.length > 0) {
+        const user = existing[0];
+        if (user.google_id !== profile.id) {
+          await pool.query('UPDATE users SET google_id = ?, avatar = COALESCE(?, avatar) WHERE id = ?', [profile.id, avatar, user.id]);
+        }
+        return done(null, user);
       }
-      return done(null, user);
+
+      const referralCode = generateToken().substring(0, 8).toUpperCase();
+      const [result] = await pool.query(
+        'INSERT INTO users (name, email, avatar, google_id, referral_code) VALUES (?, ?, ?, ?, ?)',
+        [name, email, avatar, profile.id, referralCode]
+      );
+
+      const [newUser] = await pool.query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+
+      await pool.query(
+        'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
+        [result.insertId, 'register', `${name} joined via Google`]
+      );
+
+      return done(null, newUser[0]);
+    } catch (err) {
+      return done(err, null);
     }
-
-    const referralCode = generateToken().substring(0, 8).toUpperCase();
-    const [result] = await pool.query(
-      'INSERT INTO users (name, email, avatar, google_id, referral_code) VALUES (?, ?, ?, ?, ?)',
-      [name, email, avatar, profile.id, referralCode]
-    );
-
-    const [newUser] = await pool.query('SELECT * FROM users WHERE id = ?', [result.insertId]);
-
-    await pool.query(
-      'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
-      [result.insertId, 'register', `${name} joined via Google`]
-    );
-
-    return done(null, newUser[0]);
-  } catch (err) {
-    return done(err, null);
-  }
-}));
+  }));
+}
 
 // Google OAuth routes
 router.get('/google',
-  (req, res, next) => {
-    passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
+  (req, res) => {
+    if (!googleOAuthEnabled) {
+      return res.redirect(`${process.env.CORS_ORIGIN || 'http://localhost:5173'}/login?error=google_disabled`);
+    }
+    passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, () => {});
   }
 );
 
 router.get('/google/callback',
   (req, res, next) => {
+    if (!googleOAuthEnabled) {
+      return res.redirect(`${process.env.CORS_ORIGIN || 'http://localhost:5173'}/login?error=google_disabled`);
+    }
     passport.authenticate('google', { session: false, failureRedirect: '/login' }, async (err, user) => {
       if (err || !user) {
         return res.redirect(`${process.env.CORS_ORIGIN || 'http://localhost:5173'}/login?error=google_auth_failed`);
@@ -144,11 +155,19 @@ router.post('/register', [
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const referralCode = generateToken().substring(0, 8).toUpperCase();
+    const verifyToken = mailEnabled ? generateToken() : null;
+    const verifyExpiry = mailEnabled ? new Date(Date.now() + 24 * 3600000) : null;
 
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password, avatar, referral_code) VALUES (?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, avatar, referralCode]
+      'INSERT INTO users (name, email, password, avatar, referral_code, email_verified, verify_token, verify_token_expiry) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, avatar, referralCode, mailEnabled ? 0 : 1, verifyToken, verifyExpiry]
     );
+
+    if (mailEnabled && verifyToken) {
+      sendVerification(email, name, verifyToken).catch((err) =>
+        console.error('Verification email error:', err.message)
+      );
+    }
 
     const token = jwt.sign({ id: result.insertId }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRE || '7d'
@@ -162,7 +181,7 @@ router.post('/register', [
     });
 
     const [newUser] = await pool.query(
-      'SELECT id, name, email, avatar, role, xp, level, created_at FROM users WHERE id = ?',
+      'SELECT id, name, email, avatar, role, xp, level, created_at, email_verified FROM users WHERE id = ?',
       [result.insertId]
     );
 
@@ -175,7 +194,8 @@ router.post('/register', [
       success: true,
       data: {
         user: newUser[0],
-        token
+        token,
+        email_verification_required: mailEnabled
       }
     });
   } catch (error) {
@@ -257,6 +277,7 @@ router.post('/login', [
           xp: user.xp,
           level: user.level,
           premium_until: user.premium_until,
+          email_verified: user.email_verified,
           created_at: user.created_at
         },
         token
@@ -281,6 +302,81 @@ router.post('/logout', (req, res) => {
     success: true,
     message: 'Logged out successfully'
   });
+});
+
+// Verify email via token
+router.get('/verify-email', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { token } = req.query;
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification token is required'
+      });
+    }
+
+    const [users] = await pool.query(
+      'SELECT id FROM users WHERE verify_token = ? AND verify_token_expiry > NOW()',
+      [token]
+    );
+    if (users.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification token'
+      });
+    }
+
+    await pool.query(
+      'UPDATE users SET email_verified = 1, verify_token = NULL, verify_token_expiry = NULL WHERE id = ?',
+      [users[0].id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully'
+    });
+  } catch (error) {
+    console.error('Verify email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Resend verification email
+router.post('/resend-verification', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    if (req.user.email_verified) {
+      return res.json({
+        success: true,
+        message: 'Email already verified'
+      });
+    }
+
+    const verifyToken = generateToken();
+    const verifyExpiry = new Date(Date.now() + 24 * 3600000);
+
+    await pool.query(
+      'UPDATE users SET verify_token = ?, verify_token_expiry = ? WHERE id = ?',
+      [verifyToken, verifyExpiry, req.user.id]
+    );
+
+    await sendVerification(req.user.email, req.user.name, verifyToken);
+
+    res.json({
+      success: true,
+      message: 'Verification email sent'
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
 });
 
 router.get('/me', auth, async (req, res) => {
@@ -315,10 +411,24 @@ router.get('/me', auth, async (req, res) => {
       [req.user.id]
     );
 
+    const [roles] = await pool.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['role_permissions']);
+    let rolePermissions = {};
+    if (roles.length > 0 && roles[0].setting_value) {
+      try { rolePermissions = JSON.parse(roles[0].setting_value); } catch (e) { rolePermissions = {}; }
+    }
+    const defaultPermissions = {
+      super_admin: ['manage_users', 'manage_anime', 'manage_episodes', 'manage_settings', 'manage_roles', 'manage_comments', 'manage_reports', 'manage_tokens', 'manage_codes'],
+      content_admin: ['manage_anime', 'manage_episodes', 'manage_comments', 'view_reports'],
+      moderator: ['manage_comments', 'manage_reports', 'view_users'],
+      user: []
+    };
+    const permissions = rolePermissions[req.user.role] || defaultPermissions[req.user.role] || [];
+
     res.json({
       success: true,
       data: {
         ...req.user,
+        permissions,
         badges,
         stats: {
           watchlist: watchlistCount[0].count,
@@ -353,7 +463,7 @@ router.post('/forgot-password', [
 
     const { email } = req.body;
 
-    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    const [users] = await pool.query('SELECT id, name, email FROM users WHERE email = ?', [email]);
     if (users.length === 0) {
       return res.json({
         success: true,
@@ -367,6 +477,10 @@ router.post('/forgot-password', [
     await pool.query(
       'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?',
       [resetToken, resetExpiry, users[0].id]
+    );
+
+    sendPasswordReset(users[0].email, users[0].name, resetToken).catch((err) =>
+      console.error('Reset email error:', err.message)
     );
 
     res.json({

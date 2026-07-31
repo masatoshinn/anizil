@@ -7,6 +7,8 @@ import useAuthStore from '../store/authStore';
 import useSettingsStore from '../store/settingsStore';
 import VideoPlayer from '../components/common/VideoPlayer';
 import Skeleton from '../components/common/Skeleton';
+import CommentsSection from '../components/common/CommentsSection';
+import useSEO from '../hooks/useSEO';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
@@ -16,6 +18,12 @@ export default function WatchPage() {
   const { currentAnime, episodes, fetchAnimeBySlug, fetchEpisodes, loadingCurrentAnime } = useAnimeStore();
   const { premiumEnabled, adsEnabled, adVideoUrl, vastTagUrl, adSkipSeconds, fetched, fetchSettings } = useSettingsStore();
   const { user, isAuthenticated } = useAuthStore();
+
+  useSEO({
+    title: currentAnime?.title ? `Watch ${currentAnime.title} Episode ${episodeNumber}` : 'Watch Anime',
+    description: currentAnime?.synopsis ? `Watch ${currentAnime.title} Episode ${episodeNumber} online in HD. ${currentAnime.synopsis.slice(0, 120)}...` : undefined,
+    image: currentAnime?.poster || undefined,
+  });
 
   const [server, setServer] = useState('sub');
   const [showSidebar, setShowSidebar] = useState(false);
@@ -151,11 +159,6 @@ export default function WatchPage() {
         });
       }
     } catch {}
-  };
-
-  const handleSubmitComment = async (e) => {
-    e.preventDefault();
-    toast.success('Comment submitted');
   };
 
   const goNext = () => {
@@ -387,6 +390,12 @@ export default function WatchPage() {
                 </div>
               </div>
             </div>
+
+            {/* Comments */}
+            <CommentsSection
+              animeId={currentAnime.id}
+              episodeId={episodes.find(e => (e.episode_number || e.number) === epNum)?.id}
+            />
           </div>
 
           {/* Episode Sidebar */}

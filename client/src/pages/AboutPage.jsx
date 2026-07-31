@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import useSEO from '../hooks/useSEO';
 import {
   Tv, Shield, Zap, Heart, MessageSquare, Users, Globe, Send, Mail, ExternalLink,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ const SOCIALS = [
 ];
 
 export default function AboutPage() {
+  useSEO({ title: 'About', description: 'About Anizil - the free anime streaming portal with HD quality, watchlists, XP and a vibrant community.' });
   return (
     <div className="min-h-screen">
       {/* Hero */}

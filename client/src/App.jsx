@@ -22,8 +22,16 @@ import AboutPage from './pages/AboutPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import DashboardPage from './pages/DashboardPage';
 import ApiDocsPage from './pages/ApiDocsPage';
+import UserProfilePage from './pages/UserProfilePage';
+import FaqPage from './pages/FaqPage';
+import ContactPage from './pages/ContactPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminAnime from './pages/admin/AdminAnime';
@@ -41,6 +49,8 @@ import AdminSettings from './pages/admin/AdminSettings';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminApi from './pages/admin/AdminApi';
 import AdminBadges from './pages/admin/AdminBadges';
+import AdminMessages from './pages/admin/AdminMessages';
+import AdminVisitors from './pages/admin/AdminVisitors';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -142,8 +152,15 @@ function App() {
               <Route path="/shop" element={<ShopPage />} />
               <Route path="/redeem" element={<RedeemPage />} />
               <Route path="/premium" element={<PremiumPage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/docs" element={<ApiDocsPage />} />
+              <Route path="/user/:id" element={<UserProfilePage />} />
+              <Route path="/faq" element={<FaqPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/report" element={<ContactPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
             </Route>
 
             {/* Auth Routes */}
@@ -151,7 +168,11 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
             </Route>
+
+            {/* Standalone (always accessible) */}
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
@@ -178,6 +199,8 @@ function App() {
               <Route path="/admin/analytics" element={<AdminAnalytics />} />
               <Route path="/admin/api" element={<AdminApi />} />
               <Route path="/admin/badges" element={<AdminBadges />} />
+              <Route path="/admin/messages" element={<AdminMessages />} />
+              <Route path="/admin/visitors" element={<AdminVisitors />} />
             </Route>
 
             {/* Moderator Routes (uses same admin layout) */}

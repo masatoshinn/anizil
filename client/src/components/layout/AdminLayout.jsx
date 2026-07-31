@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import useAuthStore from '../../store/authStore';
 import {
   LayoutDashboard,
   Film,
@@ -17,6 +18,8 @@ import {
   Settings,
   BarChart3,
   Plug,
+  Mail,
+  Eye,
   ChevronLeft,
   Menu,
   ArrowLeft,
@@ -26,30 +29,31 @@ import {
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin', permission: null },
-  { icon: Film, label: 'Anime', path: '/admin/anime', permission: 'add_anime' },
-  { icon: ListVideo, label: 'Episodes', path: '/admin/episodes', permission: 'add_episode' },
-  { icon: Upload, label: 'Anikoto Import', path: '/admin/anikoto', permission: 'add_anime' },
-  { icon: Layers, label: 'Anikoto Bulk Import', path: '/admin/anikoto-bulk', permission: 'add_anime' },
-  { icon: GitBranch, label: 'Anizen Import', path: '/admin/anizen', permission: 'add_anime' },
-  { icon: MessageSquare, label: 'Comments', path: '/admin/comments', permission: 'comments' },
-  { icon: AlertTriangle, label: 'Reports', path: '/admin/reports', permission: 'comments' },
-  { icon: Users, label: 'User Management', path: '/admin/users', permission: 'user_manage' },
-  { icon: Shield, label: 'Badges', path: '/admin/badges', permission: 'user_manage' },
-  { icon: Megaphone, label: 'Ad Management', path: '/admin/ads', permission: 'website_settings' },
-  { icon: Shield, label: 'Role Management', path: '/admin/roles', permission: 'role_manage' },
-  { icon: Gift, label: 'Redeem Codes', path: '/admin/redeem', permission: 'add_anime' },
-  { icon: Settings, label: 'Settings', path: '/admin/settings', permission: 'website_settings' },
-  { icon: BarChart3, label: 'Analytics', path: '/admin/analytics', permission: 'web_stats' },
-  { icon: Plug, label: 'API Management', path: '/admin/api', permission: 'api' },
+  { icon: Film, label: 'Anime', path: '/admin/anime', permission: 'manage_anime' },
+  { icon: ListVideo, label: 'Episodes', path: '/admin/episodes', permission: 'manage_episodes' },
+  { icon: Upload, label: 'Anikoto Import', path: '/admin/import/anikoto', permission: 'manage_anime' },
+  { icon: Layers, label: 'Anikoto Bulk Import', path: '/admin/import/anikoto-bulk', permission: 'manage_anime' },
+  { icon: GitBranch, label: 'Anizen Import', path: '/admin/import/anizen', permission: 'manage_anime' },
+  { icon: MessageSquare, label: 'Comments', path: '/admin/comments', permission: 'manage_comments' },
+  { icon: AlertTriangle, label: 'Reports', path: '/admin/reports', permission: 'manage_reports' },
+  { icon: Users, label: 'User Management', path: '/admin/users', permission: 'manage_users' },
+  { icon: Shield, label: 'Badges', path: '/admin/badges', permission: 'manage_users' },
+  { icon: Megaphone, label: 'Ad Management', path: '/admin/ads', permission: 'manage_settings' },
+  { icon: Shield, label: 'Role Management', path: '/admin/roles', permission: 'manage_roles' },
+  { icon: Gift, label: 'Redeem Codes', path: '/admin/redeem', permission: 'manage_codes' },
+  { icon: Settings, label: 'Settings', path: '/admin/settings', permission: 'manage_settings' },
+  { icon: BarChart3, label: 'Analytics', path: '/admin/analytics', permission: 'manage_settings' },
+  { icon: Mail, label: 'Contact Messages', path: '/admin/messages', permission: 'manage_comments' },
+  { icon: Eye, label: 'Visitor Log', path: '/admin/visitors', permission: null },
+  { icon: Plug, label: 'API Management', path: '/admin/api', permission: 'manage_tokens' },
 ];
 
 export default function AdminLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-
-  // TODO: Replace with actual auth state
-  const user = { name: 'Admin', role: 'admin', permissions: [] };
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
 
   useEffect(() => {
     setMobileOpen(false);
@@ -62,7 +66,7 @@ export default function AdminLayout({ children }) {
 
   const hasPermission = (permission) => {
     if (!permission) return true;
-    if (user?.role === 'admin') return true;
+    if (user?.role === 'super_admin') return true;
     return user?.permissions?.includes(permission);
   };
 
@@ -207,9 +211,20 @@ export default function AdminLayout({ children }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted hidden sm:block">{user?.name}</span>
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-medium">
-              {user?.name?.[0] || 'A'}
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-medium overflow-hidden">
+              {user?.avatar ? (
+                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                user?.name?.[0] || 'A'
+              )}
             </div>
+            <button
+              onClick={() => { logout(); navigate('/'); }}
+              title="Logout"
+              className="p-2 rounded-lg hover:bg-surface text-muted hover:text-text transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </header>
 

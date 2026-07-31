@@ -521,4 +521,280 @@ router.get('/badges', auth, async (req, res) => {
   }
 });
 
+// Public user profile (no auth required)
+router.get('/users/:id', async (req, res) => {  try {
+    const pool = await getPool();
+    const { id } = req.params;
+
+    if (!Number.isInteger(Number(id))) {
+      return res.status(400).json({ success: false, message: 'Invalid user id' });
+    }
+
+    const [users] = await pool.query(
+      `SELECT id, name, avatar, bio, role, xp, level, created_at, active_frame_id
+       FROM users WHERE id = ?`,
+      [id]
+    );
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const user = users[0];
+
+    const [badges] = await pool.query(
+      `SELECT b.*, ub.assigned_at
+       FROM user_badges ub
+       JOIN badges b ON ub.badge_id = b.id
+       WHERE ub.user_id = ? AND b.is_active = 1
+       ORDER BY b.is_verified DESC, ub.assigned_at ASC`,
+      [id]
+    );
+
+    const [watchlistCount] = await pool.query(
+      'SELECT COUNT(*) as count FROM watchlists WHERE user_id = ?', [id]
+    );
+    const [completedCount] = await pool.query(
+      "SELECT COUNT(*) as count FROM watch_history WHERE user_id = ? AND completed = 1", [id]
+    );
+    const [commentCount] = await pool.query(
+      'SELECT COUNT(*) as count FROM comments WHERE user_id = ?', [id]
+    );
+    const [achievementCount] = await pool.query(
+      'SELECT COUNT(*) as count FROM user_achievements WHERE user_id = ?', [id]
+    );
+
+    const [followersCount] = await pool.query(
+      'SELECT COUNT(*) as count FROM follows WHERE following_id = ?', [id]
+    );
+    const [followingCount] = await pool.query(
+      'SELECT COUNT(*) as count FROM follows WHERE follower_id = ?', [id]
+    );
+
+    const [recentWatchlist] = await pool.query(
+      `SELECT a.id, a.title, a.slug, a.poster, w.status
+       FROM watchlists w JOIN anime a ON w.anime_id = a.id
+       WHERE w.user_id = ?
+       ORDER BY w.created_at DESC LIMIT 12`,
+      [id]
+    );
+
+    const [recentComments] = await pool.query(
+      `SELECT c.id, c.content, c.created_at, a.title as anime_title, a.slug as anime_slug
+       FROM comments c
+       LEFT JOIN anime a ON c.anime_id = a.id
+       WHERE c.user_id = ? AND c.status IN ('approved', 'active')
+       ORDER BY c.created_at DESC LIMIT 10`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          avatar: user.avatar,
+          bio: user.bio,
+          role: user.role,
+          xp: user.xp,
+          level: user.level,
+          created_at: user.created_at,
+          active_frame_id: user.active_frame_id,
+          badges
+        },
+        stats: {
+          watchlist: watchlistCount[0].count,
+          completed: completedCount[0].count,
+          comments: commentCount[0].count,
+          achievements: achievementCount[0].count,
+          followers: followersCount[0].count,
+          following: followingCount[0].count
+        },
+        recent_watchlist: recentWatchlist,
+        recent_comments: recentComments
+      }
+    });
+  } catch (error) {
+    console.error('Get public profile error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Leaderboard - top users by XP
+router.get('/leaderboard', async (req, res) => {  try {
+    const pool = await getPool();
+    const { period = 'all', page = 1, limit = 20 } = req.query;
+    const { paginate } = require('../utils/helpers');
+    const { page: p, limit: l, offset } = paginate(page, limit);
+
+    let dateClause = '';
+    if (period === 'weekly') dateClause = 'AND u.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
+    else if (period === 'monthly') dateClause = 'AND u.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)';
+
+    const [users] = await pool.query(
+      `SELECT u.id, u.name, u.avatar, u.role, u.xp, u.level, u.active_frame_id,
+        u.created_at, u.is_banned,
+        (SELECT COUNT(*) FROM user_badges ub WHERE ub.user_id = u.id) as badge_count
+       FROM users u
+       WHERE u.is_banned = 0 ${dateClause}
+       ORDER BY u.xp DESC, u.created_at ASC
+       LIMIT ? OFFSET ?`,
+      [l, offset]
+    );
+
+    // Fetch badges for top users
+    for (const user of users) {
+      const [badges] = await pool.query(
+        `SELECT b.id, b.name, b.icon, b.color, b.is_verified
+         FROM user_badges ub
+         JOIN badges b ON ub.badge_id = b.id
+         WHERE ub.user_id = ? AND b.is_active = 1
+         ORDER BY b.is_verified DESC`,
+        [user.id]
+      );
+      user.badges = badges;
+    }
+
+    const [countResult] = await pool.query(
+      `SELECT COUNT(*) as total FROM users u WHERE u.is_banned = 0 ${dateClause}`
+    );
+    const total = countResult[0].total;
+
+    res.json({
+      success: true,
+      data: {
+        users,
+        pagination: { page: p, limit: l, total, pages: Math.ceil(total / l) }
+      }
+    });
+  } catch (error) {
+    console.error('Get leaderboard error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ===== FOLLOW SYSTEM =====
+
+// Follow a user
+router.post('/follow/:id', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+
+    if (!Number.isInteger(Number(id))) {
+      return res.status(400).json({ success: false, message: 'Invalid user id' });
+    }
+    if (id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'You cannot follow yourself' });
+    }
+
+    const [users] = await pool.query('SELECT id, name FROM users WHERE id = ?', [id]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    await pool.query(
+      'INSERT IGNORE INTO follows (follower_id, following_id) VALUES (?, ?)',
+      [req.user.id, id]
+    );
+
+    // Notify the followed user
+    const [existing] = await pool.query(
+      'SELECT id FROM follows WHERE follower_id = ? AND following_id = ?',
+      [req.user.id, id]
+    );
+    if (existing.length === 1) {
+      await pool.query(
+        'INSERT INTO notifications (user_id, title, content, type) VALUES (?, ?, ?, ?)',
+        [id, 'New Follower', `${req.user.name} started following you`, 'follow']
+      );
+    }
+
+    res.json({ success: true, message: 'User followed' });
+  } catch (error) {
+    console.error('Follow error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Unfollow a user
+router.delete('/follow/:id', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+
+    await pool.query(
+      'DELETE FROM follows WHERE follower_id = ? AND following_id = ?',
+      [req.user.id, id]
+    );
+
+    res.json({ success: true, message: 'User unfollowed' });
+  } catch (error) {
+    console.error('Unfollow error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Check if current user follows target user (public)
+router.get('/follow-status/:id', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+
+    const [existing] = await pool.query(
+      'SELECT id FROM follows WHERE follower_id = ? AND following_id = ?',
+      [req.user.id, id]
+    );
+
+    res.json({ success: true, data: { is_following: existing.length > 0 } });
+  } catch (error) {
+    console.error('Follow status error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get users that a user is following
+router.get('/following/:id', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+
+    const [following] = await pool.query(
+      `SELECT u.id, u.name, u.avatar, u.level, u.xp
+       FROM follows f
+       JOIN users u ON f.following_id = u.id
+       WHERE f.follower_id = ?
+       ORDER BY f.created_at DESC`,
+      [id]
+    );
+
+    res.json({ success: true, data: following });
+  } catch (error) {
+    console.error('Get following error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get followers of a user
+router.get('/followers/:id', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+
+    const [followers] = await pool.query(
+      `SELECT u.id, u.name, u.avatar, u.level, u.xp
+       FROM follows f
+       JOIN users u ON f.follower_id = u.id
+       WHERE f.following_id = ?
+       ORDER BY f.created_at DESC`,
+      [id]
+    );
+
+    res.json({ success: true, data: followers });
+  } catch (error) {
+    console.error('Get followers error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

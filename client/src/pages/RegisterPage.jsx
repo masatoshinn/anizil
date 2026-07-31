@@ -49,7 +49,13 @@ export default function RegisterPage() {
     clearError();
     if (!validate()) return;
     const result = await register(name, email, password);
-    if (result.success) navigate('/');
+    if (result.success) {
+      if (result.emailVerificationRequired) {
+        navigate('/verify-email?sent=1');
+      } else {
+        navigate('/');
+      }
+    }
   };
 
   return (

@@ -12,9 +12,10 @@ const columns = [
     title: 'Quick Links',
     links: [
       { label: 'Home', path: '/' },
-      { label: 'Genre', path: '/genre' },
+      { label: 'Genre', path: '/genres' },
       { label: 'Schedule', path: '/schedule' },
       { label: 'Forum', path: '/forum' },
+      { label: 'Leaderboard', path: '/leaderboard' },
     ],
   },
   {

@@ -44,7 +44,7 @@ const useAuthStore = create((set, get) => ({
         isLoading: false,
         error: null,
       });
-      return { success: true, user };
+      return { success: true, user, emailVerificationRequired: !!data.email_verification_required };
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
       set({ isLoading: false, error: message });

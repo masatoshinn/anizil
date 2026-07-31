@@ -9,6 +9,7 @@ import AnimeCard from '../components/common/AnimeCard';
 import Skeleton from '../components/common/Skeleton';
 import GenreTag from '../components/common/GenreTag';
 import AnnouncementBar from '../components/common/AnnouncementBar';
+import useSEO from '../hooks/useSEO';
 import api from '../lib/api';
 
 const container = {
@@ -22,6 +23,10 @@ const item = {
 };
 
 export default function HomePage() {
+  useSEO({
+    title: 'Home',
+    description: 'Watch anime online free in HD. Stream the latest episodes, track your watchlist, earn XP and join the community.',
+  });
   const {
     featured, trending, recent, genres,
     loadingFeatured, loadingTrending, loadingRecent, loadingGenres,

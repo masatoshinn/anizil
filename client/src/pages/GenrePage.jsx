@@ -6,6 +6,7 @@ import useAnimeStore from '../store/animeStore';
 import AnimeCard from '../components/common/AnimeCard';
 import Skeleton from '../components/common/Skeleton';
 import Pagination from '../components/common/Pagination';
+import useSEO from '../hooks/useSEO';
 import { cn } from '../lib/utils';
 
 const fadeIn = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
@@ -24,6 +25,11 @@ export default function GenrePage() {
     animeList, genres, pagination, loadingAnimeList, loadingGenres,
     fetchAnimeList, fetchGenres,
   } = useAnimeStore();
+
+  useSEO({
+    title: genreName ? `${decodeURIComponent(genreName)} Anime` : 'Browse by Genre',
+    description: genreName ? `Watch ${decodeURIComponent(genreName)} anime online in HD. Explore popular, top rated and newest ${decodeURIComponent(genreName)} titles.` : 'Browse all anime genres on Anizil.',
+  });
 
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('popular');

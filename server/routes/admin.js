@@ -1575,4 +1575,113 @@ router.get('/my-badges', async (req, res) => {
   }
 });
 
+// Contact messages
+router.get('/messages', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { status, page = 1, limit = 20 } = req.query;
+    const { paginate } = require('../utils/helpers');
+    const { page: p, limit: l, offset } = paginate(page, limit);
+
+    let whereClause = 'WHERE 1=1';
+    let params = [];
+    if (status) {
+      whereClause += ' AND cm.status = ?';
+      params.push(status);
+    }
+
+    const [countResult] = await pool.query(
+      `SELECT COUNT(*) as total FROM contact_messages cm ${whereClause}`, params
+    );
+    const total = countResult[0].total;
+
+    const [messages] = await pool.query(
+      `SELECT cm.*, u.name as user_name, u.avatar as user_avatar
+       FROM contact_messages cm
+       LEFT JOIN users u ON cm.user_id = u.id
+       ${whereClause}
+       ORDER BY cm.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, l, offset]
+    );
+
+    res.json({
+      success: true,
+      data: { messages, pagination: { page: p, limit: l, total, pages: Math.ceil(total / l) } }
+    });
+  } catch (error) {
+    console.error('Get messages error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.put('/messages/:id', requirePermission('manage_comments'), async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['new', 'read', 'resolved'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    await pool.query('UPDATE contact_messages SET status = ? WHERE id = ?', [status, id]);
+    res.json({ success: true, message: 'Message updated' });
+  } catch (error) {
+    console.error('Update message error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.delete('/messages/:id', requirePermission('manage_comments'), async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+    await pool.query('DELETE FROM contact_messages WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Message deleted' });
+  } catch (error) {
+    console.error('Delete message error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Visitor log
+router.get('/visitors', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { page = 1, limit = 30 } = req.query;
+    const { paginate } = require('../utils/helpers');
+    const { page: p, limit: l, offset } = paginate(page, limit);
+
+    const [countResult] = await pool.query('SELECT COUNT(*) as total FROM visitor_log');
+    const total = countResult[0].total;
+
+    const [visitors] = await pool.query(
+      `SELECT vl.*, u.name as user_name
+       FROM visitor_log vl
+       LEFT JOIN users u ON vl.user_id = u.id
+       ORDER BY vl.visited_at DESC
+       LIMIT ? OFFSET ?`,
+      [l, offset]
+    );
+
+    const [todayCount] = await pool.query(
+      "SELECT COUNT(*) as count FROM visitor_log WHERE DATE(visited_at) = CURDATE()"
+    );
+
+    res.json({
+      success: true,
+      data: {
+        visitors,
+        today: todayCount[0].count,
+        total,
+        pagination: { page: p, limit: l, total, pages: Math.ceil(total / l) }
+      }
+    });
+  } catch (error) {
+    console.error('Get visitors error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

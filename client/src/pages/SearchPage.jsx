@@ -7,6 +7,7 @@ import AnimeCard from '../components/common/AnimeCard';
 import Skeleton from '../components/common/Skeleton';
 import Pagination from '../components/common/Pagination';
 import useDebounce from '../hooks/useDebounce';
+import useSEO from '../hooks/useSEO';
 import { cn } from '../lib/utils';
 
 const HISTORY_KEY = 'anizil_search_history';
@@ -30,6 +31,11 @@ const fadeIn = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { searchResults, loadingSearch, searchAnime } = useAnimeStore();
+
+  useSEO({
+    title: searchParams.get('q') ? `Search: ${searchParams.get('q')}` : 'Search Anime',
+    description: 'Search for anime by title, genre, status or year on Anizil.',
+  });
 
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [showFilters, setShowFilters] = useState(false);

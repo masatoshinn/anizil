@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, Play, ChevronRight } from 'lucide-react';
 import useAnimeStore from '../store/animeStore';
 import Skeleton from '../components/common/Skeleton';
+import useSEO from '../hooks/useSEO';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
 
@@ -13,6 +14,7 @@ const fadeIn = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 
 export default function SchedulePage() {
+  useSEO({ title: 'Schedule', description: 'Weekly anime release schedule - see which episodes air today and every day of the week.' });
   const today = new Date().getDay();
   const todayIndex = today === 0 ? 6 : today - 1;
   const [activeDay, setActiveDay] = useState(DAYS[todayIndex]);

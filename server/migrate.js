@@ -40,6 +40,36 @@ require('dotenv').config();
       FOREIGN KEY (anime_id) REFERENCES anime(id) ON DELETE CASCADE,
       UNIQUE KEY unique_user_anime (user_id, anime_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS visitor_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      page VARCHAR(255) NOT NULL,
+      ip_address VARCHAR(45) DEFAULT NULL,
+      user_agent VARCHAR(300) DEFAULT NULL,
+      user_id INT DEFAULT NULL,
+      visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_visitor_page (page),
+      INDEX idx_visitor_created (visited_at)
+    )`,
+    `CREATE TABLE IF NOT EXISTS contact_messages (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      subject VARCHAR(255) DEFAULT '',
+      message TEXT NOT NULL,
+      category ENUM('general','report','bug','suggestion','copyright') DEFAULT 'general',
+      status ENUM('new','read','resolved') DEFAULT 'new',
+      user_id INT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS follows (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      follower_id INT NOT NULL,
+      following_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE KEY unique_follow (follower_id, following_id)
+    )`,
   ];
 
   for (const sql of stmts) {
@@ -87,6 +117,41 @@ require('dotenv').config();
     console.log('Added embed_link column');
   } catch (e) {
     console.log('embed_link column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE users ADD COLUMN email_verified TINYINT(1) DEFAULT 1');
+    console.log('Added email_verified column');
+  } catch (e) {
+    console.log('email_verified column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE users ADD COLUMN verify_token VARCHAR(255) DEFAULT NULL');
+    console.log('Added verify_token column');
+  } catch (e) {
+    console.log('verify_token column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE users ADD COLUMN verify_token_expiry DATETIME DEFAULT NULL');
+    console.log('Added verify_token_expiry column');
+  } catch (e) {
+    console.log('verify_token_expiry column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE forum_posts ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    console.log('Added forum_posts.updated_at column');
+  } catch (e) {
+    console.log('forum_posts.updated_at column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE forum_replies ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    console.log('Added forum_replies.updated_at column');
+  } catch (e) {
+    console.log('forum_replies.updated_at column already exists');
   }
 
   const frames = [
