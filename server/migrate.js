@@ -70,6 +70,96 @@ require('dotenv').config();
       FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
       UNIQUE KEY unique_follow (follower_id, following_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS name_colors (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(50) NOT NULL,
+      color_value VARCHAR(100) NOT NULL,
+      color_type ENUM('solid','gradient','animated') DEFAULT 'solid',
+      price_xp INT NOT NULL DEFAULT 500,
+      rarity ENUM('common','rare','epic','legendary') DEFAULT 'common',
+      is_active TINYINT(1) DEFAULT 1,
+      sort_order INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_name_colors (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      color_id INT NOT NULL,
+      purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (color_id) REFERENCES name_colors(id) ON DELETE CASCADE,
+      UNIQUE KEY unique_user_color (user_id, color_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS profile_banners (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      image_url VARCHAR(500) NOT NULL,
+      price_xp INT NOT NULL DEFAULT 1000,
+      rarity ENUM('common','rare','epic','legendary') DEFAULT 'common',
+      is_active TINYINT(1) DEFAULT 1,
+      sort_order INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_banners (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      banner_id INT NOT NULL,
+      purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (banner_id) REFERENCES profile_banners(id) ON DELETE CASCADE,
+      UNIQUE KEY unique_user_banner (user_id, banner_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS mangas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(500) NOT NULL,
+      slug VARCHAR(500) UNIQUE NOT NULL,
+      description TEXT,
+      poster VARCHAR(500),
+      author VARCHAR(255),
+      artist VARCHAR(255),
+      status VARCHAR(50) DEFAULT 'ongoing',
+      genres VARCHAR(500),
+      demography VARCHAR(100),
+      content_rating VARCHAR(50),
+      year INT,
+      rating DECIMAL(3,1) DEFAULT 0,
+      follow_count INT DEFAULT 0,
+      mangadex_id VARCHAR(100) DEFAULT NULL,
+      user_rating DECIMAL(3,1) DEFAULT 0,
+      rating_count INT DEFAULT 0,
+      views INT DEFAULT 0,
+      is_featured TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_mangadex_id (mangadex_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS manga_chapters (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      manga_id INT NOT NULL,
+      chapter_uuid VARCHAR(100) NOT NULL,
+      chapter_number VARCHAR(50) DEFAULT NULL,
+      title VARCHAR(500),
+      volume VARCHAR(50),
+      language VARCHAR(20) DEFAULT 'en',
+      scanlation_group VARCHAR(255),
+      external_url VARCHAR(500),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (manga_id) REFERENCES mangas(id) ON DELETE CASCADE,
+      UNIQUE KEY unique_manga_chapter (manga_id, chapter_uuid)
+    )`,
+    `CREATE TABLE IF NOT EXISTS content_ratings (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      content_type ENUM('anime','manga') DEFAULT 'anime',
+      content_id INT NOT NULL,
+      user_id INT NOT NULL,
+      rating TINYINT NOT NULL,
+      review TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE KEY unique_user_content (content_type, content_id, user_id),
+      INDEX idx_content (content_type, content_id)
+    )`,
   ];
 
   for (const sql of stmts) {
@@ -154,6 +244,41 @@ require('dotenv').config();
     console.log('forum_replies.updated_at column already exists');
   }
 
+  try {
+    await pool.query('ALTER TABLE users ADD COLUMN active_name_color VARCHAR(100) DEFAULT NULL');
+    console.log('Added active_name_color column');
+  } catch (e) {
+    console.log('active_name_color column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE users ADD COLUMN active_banner_id INT DEFAULT NULL');
+    console.log('Added active_banner_id column');
+  } catch (e) {
+    console.log('active_banner_id column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE badges ADD COLUMN price_xp INT NOT NULL DEFAULT 0');
+    console.log('Added badges.price_xp column');
+  } catch (e) {
+    console.log('badges.price_xp column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE anime ADD COLUMN user_rating DECIMAL(3,1) DEFAULT 0');
+    console.log('Added anime.user_rating column');
+  } catch (e) {
+    console.log('anime.user_rating column already exists');
+  }
+
+  try {
+    await pool.query('ALTER TABLE anime ADD COLUMN rating_count INT DEFAULT 0');
+    console.log('Added anime.rating_count column');
+  } catch (e) {
+    console.log('anime.rating_count column already exists');
+  }
+
   const frames = [
     ['No Frame', '', 0, 'common', '#64748b', 0],
     ['Bronze Shield', 'https://api.dicebear.com/7.x/shapes/svg?seed=bronze&backgroundColor=78350f', 200, 'common', '#cd7f32', 1],
@@ -197,6 +322,7 @@ require('dotenv').config();
       description VARCHAR(255) DEFAULT '',
       is_verified TINYINT(1) DEFAULT 0,
       is_active TINYINT(1) DEFAULT 1,
+      price_xp INT NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS user_badges (
@@ -254,6 +380,78 @@ require('dotenv').config();
     }
     console.log('Assigned Verified badge to', superAdmins.length, 'super admin(s)');
   }
+
+  // ===== NAME COLORS =====
+  const [colorCount] = await pool.query('SELECT COUNT(*) as cnt FROM name_colors');
+  if (colorCount[0].cnt === 0) {
+    const colors = [
+      ['Default', '#f8fafc', 'solid', 0, 'common', 0],
+      ['Crimson Red', '#ef4444', 'solid', 200, 'common', 1],
+      ['Ocean Blue', '#0ea5e9', 'solid', 200, 'common', 2],
+      ['Forest Green', '#22c55e', 'solid', 200, 'common', 3],
+      ['Golden Sun', '#fbbf24', 'solid', 300, 'common', 4],
+      ['Royal Purple', '#a855f7', 'solid', 500, 'rare', 5],
+      ['Hot Pink', '#ec4899', 'solid', 500, 'rare', 6],
+      ['Tangerine', '#f97316', 'solid', 500, 'rare', 7],
+      ['Cyan Neon', '#22d3ee', 'solid', 800, 'rare', 8],
+      ['Ruby Red', '#dc2626', 'solid', 1000, 'epic', 9],
+      ['Emerald Glow', '#10b981', 'solid', 1000, 'epic', 10],
+      ['Amethyst', '#8b5cf6', 'solid', 1500, 'epic', 11],
+      ['Sunset Gradient', 'linear-gradient(90deg, #f97316, #ef4444)', 'gradient', 2000, 'epic', 12],
+      ['Ocean Gradient', 'linear-gradient(90deg, #0ea5e9, #6366f1)', 'gradient', 2000, 'epic', 13],
+      ['Gold Gradient', 'linear-gradient(90deg, #fbbf24, #f59e0b)', 'gradient', 2500, 'epic', 14],
+      ['Neon Purple Gradient', 'linear-gradient(90deg, #a855f7, #ec4899)', 'gradient', 2500, 'epic', 15],
+      ['Rainbow Animated', 'linear-gradient(90deg, #ef4444, #f97316, #fbbf24, #22c55e, #0ea5e9, #a855f7)', 'animated', 5000, 'legendary', 16],
+      ['Fire Animated', 'linear-gradient(90deg, #f97316, #ef4444, #fbbf24)', 'animated', 6000, 'legendary', 17],
+      ['Aurora Animated', 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899)', 'animated', 7000, 'legendary', 18],
+    ];
+    for (const c of colors) {
+      await pool.query('INSERT INTO name_colors (name, color_value, color_type, price_xp, rarity, sort_order) VALUES (?, ?, ?, ?, ?, ?)', c);
+    }
+    console.log('Seeded', colors.length, 'name colors');
+  } else {
+    console.log('Name colors already exist:', colorCount[0].cnt);
+  }
+
+  // ===== PROFILE BANNERS =====
+  const [bannerCount] = await pool.query('SELECT COUNT(*) as cnt FROM profile_banners');
+  if (bannerCount[0].cnt === 0) {
+    const banners = [
+      ['No Banner', '', 0, 'common', 0],
+      ['Sunset Horizon', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerSunset&backgroundColor=7c2d12', 1000, 'rare', 1],
+      ['Ocean Waves', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerOcean&backgroundColor=0c4a6e', 1500, 'rare', 2],
+      ['Neon City', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerNeon&backgroundColor=1e1b4b', 2500, 'epic', 3],
+      ['Forest Mist', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerForest&backgroundColor=052e16', 2500, 'epic', 4],
+      ['Galaxy Night', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerGalaxy&backgroundColor=172554', 4000, 'epic', 5],
+      ['Sakura Wind', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerSakura&backgroundColor=4a044e', 6000, 'legendary', 6],
+      ['Volcano Fury', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerVolcano&backgroundColor=450a0a', 8000, 'legendary', 7],
+      ['Celestial Dream', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerCelestial&backgroundColor=1e1b4b', 12000, 'legendary', 8],
+    ];
+    for (const b of banners) {
+      await pool.query('INSERT INTO profile_banners (name, image_url, price_xp, rarity, sort_order) VALUES (?, ?, ?, ?, ?)', b);
+    }
+    console.log('Seeded', banners.length, 'profile banners');
+  } else {
+    console.log('Profile banners already exist:', bannerCount[0].cnt);
+  }
+
+  // ===== BUYABLE BADGES =====
+  const shopBadges = [
+    ['XP Hoarder', '💰', '#fbbf24', 'Owned 10000+ XP at once', 500],
+    ['Frame Collector', '🖼️', '#0ea5e9', 'Owned 5+ profile frames', 1500],
+    ['Color Artist', '🎨', '#a855f7', 'Owned 5+ name colors', 2000],
+    ['Premium Elite', '💎', '#22c55e', 'Premium member badge', 3000],
+  ];
+  for (const sb of shopBadges) {
+    const [exists] = await pool.query('SELECT id FROM badges WHERE name = ?', [sb[0]]);
+    if (exists.length === 0) {
+      await pool.query(
+        'INSERT INTO badges (name, icon, color, description, is_verified, is_active, price_xp) VALUES (?, ?, ?, ?, 0, 1, ?)',
+        [sb[0], sb[1], sb[2], sb[3], sb[4]]
+      );
+    }
+  }
+  console.log('Seeded buyable badges');
 
   await pool.end();
   console.log('Done!');

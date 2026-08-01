@@ -330,4 +330,351 @@ router.get('/xp-info', auth, async (req, res) => {
   });
 });
 
+// =============================================
+// NAME COLORS (username/comment color)
+// =============================================
+
+// List all active name colors
+router.get('/name-colors', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [colors] = await pool.query(
+      'SELECT * FROM name_colors WHERE is_active = 1 ORDER BY sort_order ASC, price_xp ASC'
+    );
+    res.json({ success: true, data: colors });
+  } catch (error) {
+    console.error('Get name colors error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get user's purchased colors + active color
+router.get('/name-colors/my', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [purchased] = await pool.query(
+      `SELECT nc.* FROM user_name_colors unc
+       JOIN name_colors nc ON unc.color_id = nc.id
+       WHERE unc.user_id = ? ORDER BY nc.sort_order ASC`,
+      [req.user.id]
+    );
+    const [user] = await pool.query('SELECT active_name_color FROM users WHERE id = ?', [req.user.id]);
+    res.json({
+      success: true,
+      data: {
+        colors: purchased,
+        active_name_color: user[0]?.active_name_color || null,
+      }
+    });
+  } catch (error) {
+    console.error('Get my colors error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Purchase a name color with XP
+router.post('/name-colors/purchase', auth, async (req, res) => {
+  try {
+    const { color_id } = req.body;
+    if (!color_id) return res.status(400).json({ success: false, message: 'color_id is required' });
+
+    const pool = await getPool();
+    const [colors] = await pool.query('SELECT * FROM name_colors WHERE id = ? AND is_active = 1', [color_id]);
+    if (colors.length === 0) return res.status(404).json({ success: false, message: 'Color not found' });
+
+    const color = colors[0];
+    if (color.price_xp === 0) return res.status(400).json({ success: false, message: 'This color is free (default)' });
+
+    const [existing] = await pool.query(
+      'SELECT id FROM user_name_colors WHERE user_id = ? AND color_id = ?',
+      [req.user.id, color_id]
+    );
+    if (existing.length > 0) return res.status(400).json({ success: false, message: 'You already own this color' });
+
+    const [user] = await pool.query('SELECT xp FROM users WHERE id = ?', [req.user.id]);
+    if (user[0].xp < color.price_xp) {
+      return res.status(400).json({ success: false, message: `Not enough XP. Need ${color.price_xp} XP, you have ${user[0].xp} XP` });
+    }
+
+    await pool.query('UPDATE users SET xp = xp - ? WHERE id = ?', [color.price_xp, req.user.id]);
+    await pool.query('INSERT INTO user_name_colors (user_id, color_id) VALUES (?, ?)', [req.user.id, color_id]);
+
+    await pool.query(
+      'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
+      [req.user.id, 'purchase_color', `Purchased name color: ${color.name} (-${color.price_xp} XP)`]
+    );
+
+    const [updatedUser] = await pool.query('SELECT xp FROM users WHERE id = ?', [req.user.id]);
+    res.json({ success: true, message: `Purchased ${color.name}!`, data: { new_xp: updatedUser[0].xp } });
+  } catch (error) {
+    console.error('Purchase color error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Set active name color (or clear it)
+router.post('/name-colors/activate', auth, async (req, res) => {
+  try {
+    const { color_id } = req.body;
+    const pool = await getPool();
+
+    if (color_id === null || color_id === 0) {
+      await pool.query('UPDATE users SET active_name_color = NULL WHERE id = ?', [req.user.id]);
+      return res.json({ success: true, message: 'Name color removed' });
+    }
+
+    const [colors] = await pool.query('SELECT * FROM name_colors WHERE id = ? AND is_active = 1', [color_id]);
+    if (colors.length === 0) return res.status(404).json({ success: false, message: 'Color not found' });
+
+    const color = colors[0];
+    if (color.price_xp > 0) {
+      const [owned] = await pool.query(
+        'SELECT id FROM user_name_colors WHERE user_id = ? AND color_id = ?',
+        [req.user.id, color_id]
+      );
+      if (owned.length === 0) return res.status(400).json({ success: false, message: 'You do not own this color' });
+    }
+
+    await pool.query('UPDATE users SET active_name_color = ? WHERE id = ?', [color.color_value, req.user.id]);
+    res.json({ success: true, message: 'Name color applied!' });
+  } catch (error) {
+    console.error('Activate color error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// =============================================
+// PROFILE BANNERS
+// =============================================
+
+// List all active profile banners
+router.get('/banners', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [banners] = await pool.query(
+      'SELECT * FROM profile_banners WHERE is_active = 1 ORDER BY sort_order ASC, price_xp ASC'
+    );
+    res.json({ success: true, data: banners });
+  } catch (error) {
+    console.error('Get banners error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get user's purchased banners + active banner
+router.get('/banners/my', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [purchased] = await pool.query(
+      `SELECT pb.* FROM user_banners ub
+       JOIN profile_banners pb ON ub.banner_id = pb.id
+       WHERE ub.user_id = ? ORDER BY pb.sort_order ASC`,
+      [req.user.id]
+    );
+    const [user] = await pool.query('SELECT active_banner_id FROM users WHERE id = ?', [req.user.id]);
+    res.json({
+      success: true,
+      data: {
+        banners: purchased,
+        active_banner_id: user[0]?.active_banner_id || null,
+      }
+    });
+  } catch (error) {
+    console.error('Get my banners error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Purchase a profile banner with XP
+router.post('/banners/purchase', auth, async (req, res) => {
+  try {
+    const { banner_id } = req.body;
+    if (!banner_id) return res.status(400).json({ success: false, message: 'banner_id is required' });
+
+    const pool = await getPool();
+    const [banners] = await pool.query('SELECT * FROM profile_banners WHERE id = ? AND is_active = 1', [banner_id]);
+    if (banners.length === 0) return res.status(404).json({ success: false, message: 'Banner not found' });
+
+    const banner = banners[0];
+    if (banner.price_xp === 0) return res.status(400).json({ success: false, message: 'This banner is free (default)' });
+
+    const [existing] = await pool.query(
+      'SELECT id FROM user_banners WHERE user_id = ? AND banner_id = ?',
+      [req.user.id, banner_id]
+    );
+    if (existing.length > 0) return res.status(400).json({ success: false, message: 'You already own this banner' });
+
+    const [user] = await pool.query('SELECT xp FROM users WHERE id = ?', [req.user.id]);
+    if (user[0].xp < banner.price_xp) {
+      return res.status(400).json({ success: false, message: `Not enough XP. Need ${banner.price_xp} XP, you have ${user[0].xp} XP` });
+    }
+
+    await pool.query('UPDATE users SET xp = xp - ? WHERE id = ?', [banner.price_xp, req.user.id]);
+    await pool.query('INSERT INTO user_banners (user_id, banner_id) VALUES (?, ?)', [req.user.id, banner_id]);
+
+    await pool.query(
+      'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
+      [req.user.id, 'purchase_banner', `Purchased profile banner: ${banner.name} (-${banner.price_xp} XP)`]
+    );
+
+    const [updatedUser] = await pool.query('SELECT xp FROM users WHERE id = ?', [req.user.id]);
+    res.json({ success: true, message: `Purchased ${banner.name}!`, data: { new_xp: updatedUser[0].xp } });
+  } catch (error) {
+    console.error('Purchase banner error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Set active banner (or clear it)
+router.post('/banners/activate', auth, async (req, res) => {
+  try {
+    const { banner_id } = req.body;
+    const pool = await getPool();
+
+    if (banner_id === null || banner_id === 0) {
+      await pool.query('UPDATE users SET active_banner_id = NULL WHERE id = ?', [req.user.id]);
+      return res.json({ success: true, message: 'Banner removed' });
+    }
+
+    const [owned] = await pool.query(
+      'SELECT id FROM user_banners WHERE user_id = ? AND banner_id = ?',
+      [req.user.id, banner_id]
+    );
+    if (owned.length === 0) return res.status(400).json({ success: false, message: 'You do not own this banner' });
+
+    await pool.query('UPDATE users SET active_banner_id = ? WHERE id = ?', [banner_id, req.user.id]);
+    res.json({ success: true, message: 'Banner activated!' });
+  } catch (error) {
+    console.error('Activate banner error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// =============================================
+// BUY PREMIUM DAYS WITH XP
+// =============================================
+const PREMIUM_XP_PLANS = {
+  '7': 1500,
+  '30': 5000,
+  '90': 12000,
+};
+
+router.post('/premium/purchase', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [premiumSetting] = await pool.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['premium_enabled']);
+    if (premiumSetting.length > 0 && premiumSetting[0].setting_value === '0') {
+      return res.status(400).json({ success: false, message: 'Premium system is disabled' });
+    }
+
+    const { days } = req.body;
+    const cost = PREMIUM_XP_PLANS[String(days)];
+    if (!cost) {
+      return res.status(400).json({ success: false, message: 'Invalid plan. Choose 7, 30 or 90 days' });
+    }
+
+    const [user] = await pool.query('SELECT xp FROM users WHERE id = ?', [req.user.id]);
+    if (user[0].xp < cost) {
+      return res.status(400).json({ success: false, message: `Not enough XP. Need ${cost} XP, you have ${user[0].xp} XP` });
+    }
+
+    await pool.query('UPDATE users SET xp = xp - ? WHERE id = ?', [cost, req.user.id]);
+    await pool.query(
+      'UPDATE users SET premium_until = GREATEST(COALESCE(premium_until, NOW()), NOW()) + INTERVAL ? DAY WHERE id = ?',
+      [days, req.user.id]
+    );
+
+    await pool.query(
+      'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
+      [req.user.id, 'purchase_premium', `Bought ${days} days of premium (-${cost} XP)`]
+    );
+
+    const [updatedUser] = await pool.query('SELECT xp, premium_until FROM users WHERE id = ?', [req.user.id]);
+    res.json({
+      success: true,
+      message: `Added ${days} days of Premium!`,
+      data: { new_xp: updatedUser[0].xp, premium_until: updatedUser[0].premium_until }
+    });
+  } catch (error) {
+    console.error('Purchase premium error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// =============================================
+// BUYABLE BADGES (with XP)
+// =============================================
+
+// List all badges (includes price_xp for purchasable ones)
+router.get('/badges', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [badges] = await pool.query('SELECT * FROM badges WHERE is_active = 1 ORDER BY price_xp DESC, is_verified DESC, id ASC');
+    res.json({ success: true, data: badges });
+  } catch (error) {
+    console.error('Get badges error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get user's owned badges
+router.get('/badges/my', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [badges] = await pool.query(
+      `SELECT b.id, b.name, b.icon, b.color, b.description, b.price_xp, b.is_verified
+       FROM user_badges ub
+       JOIN badges b ON ub.badge_id = b.id
+       WHERE ub.user_id = ? AND b.is_active = 1`,
+      [req.user.id]
+    );
+    res.json({ success: true, data: badges });
+  } catch (error) {
+    console.error('Get my badges error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Purchase a badge with XP
+router.post('/badges/purchase', auth, async (req, res) => {
+  try {
+    const { badge_id } = req.body;
+    if (!badge_id) return res.status(400).json({ success: false, message: 'badge_id is required' });
+
+    const pool = await getPool();
+    const [badges] = await pool.query('SELECT * FROM badges WHERE id = ? AND is_active = 1', [badge_id]);
+    if (badges.length === 0) return res.status(404).json({ success: false, message: 'Badge not found' });
+
+    const badge = badges[0];
+    if (!badge.price_xp || badge.price_xp <= 0) {
+      return res.status(400).json({ success: false, message: 'This badge is not purchasable' });
+    }
+
+    const [existing] = await pool.query(
+      'SELECT id FROM user_badges WHERE user_id = ? AND badge_id = ?',
+      [req.user.id, badge_id]
+    );
+    if (existing.length > 0) return res.status(400).json({ success: false, message: 'You already own this badge' });
+
+    const [user] = await pool.query('SELECT xp FROM users WHERE id = ?', [req.user.id]);
+    if (user[0].xp < badge.price_xp) {
+      return res.status(400).json({ success: false, message: `Not enough XP. Need ${badge.price_xp} XP, you have ${user[0].xp} XP` });
+    }
+
+    await pool.query('UPDATE users SET xp = xp - ? WHERE id = ?', [badge.price_xp, req.user.id]);
+    await pool.query('INSERT INTO user_badges (user_id, badge_id, assigned_by) VALUES (?, ?, ?)', [req.user.id, badge_id, req.user.id]);
+
+    await pool.query(
+      'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
+      [req.user.id, 'purchase_badge', `Purchased badge: ${badge.name} (-${badge.price_xp} XP)`]
+    );
+
+    const [updatedUser] = await pool.query('SELECT xp FROM users WHERE id = ?', [req.user.id]);
+    res.json({ success: true, message: `Purchased ${badge.name} badge!`, data: { new_xp: updatedUser[0].xp } });
+  } catch (error) {
+    console.error('Purchase badge error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

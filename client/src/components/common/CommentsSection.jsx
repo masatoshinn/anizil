@@ -6,6 +6,8 @@ import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 
+const REACTIONS = ['👍', '❤️', '😂', '😢', '🔥'];
+
 export default function CommentsSection({ animeId, episodeId }) {
   const { user, isAuthenticated } = useAuthStore();
   const [comments, setComments] = useState([]);
@@ -82,6 +84,22 @@ export default function CommentsSection({ animeId, episodeId }) {
     }
   };
 
+  const handleReaction = async (commentId, emoji) => {
+    if (!isAuthenticated) {
+      toast.error('Login to react');
+      return;
+    }
+    try {
+      const res = await api.post(`/comments/${commentId}/reaction`, { reaction: emoji });
+      const { reactions, my_reaction } = res.data.data;
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, reactions, my_reaction } : c))
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to react');
+    }
+  };
+
   const handleReport = async (id) => {
     const reason = window.prompt('Reason for reporting this comment:');
     if (!reason) return;
@@ -91,6 +109,14 @@ export default function CommentsSection({ animeId, episodeId }) {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to report');
     }
+  };
+
+  const nameStyle = (color) => {
+    if (!color) return undefined;
+    if (color.startsWith('linear-gradient')) {
+      return { color: 'transparent', backgroundImage: color, WebkitBackgroundClip: 'text', backgroundClip: 'text' };
+    }
+    return { color };
   };
 
   const Avatar = ({ comment }) => (
@@ -180,11 +206,17 @@ export default function CommentsSection({ animeId, episodeId }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     {comment.user_id ? (
-                      <Link to={`/user/${comment.user_id}`} className="text-text-primary text-sm font-medium hover:text-[#0ea5e9] transition-colors">
+                      <Link
+                        to={`/user/${comment.user_id}`}
+                        className="text-text-primary text-sm font-medium hover:text-[#0ea5e9] transition-colors"
+                        style={nameStyle(comment.user_name_color)}
+                      >
                         {comment.user_name || 'Anonymous'}
                       </Link>
                     ) : (
-                      <span className="text-text-primary text-sm font-medium">{comment.user_name || 'Anonymous'}</span>
+                      <span className="text-text-primary text-sm font-medium" style={nameStyle(comment.user_name_color)}>
+                        {comment.user_name || 'Anonymous'}
+                      </span>
                     )}
                     {comment.badges && comment.badges.slice(0, 3).map((badge) =>
                       badge.is_verified ? (
@@ -198,6 +230,31 @@ export default function CommentsSection({ animeId, episodeId }) {
                     <span className="text-xs text-text-muted">{new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   </div>
                   <p className="text-text-primary text-sm leading-relaxed">{comment.content}</p>
+
+                  {/* Emoji reactions */}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    {REACTIONS.map((emoji) => {
+                      const count = comment.reactions?.find((r) => r.reaction === emoji)?.count || 0;
+                      const active = comment.my_reaction === emoji;
+                      return (
+                        <button
+                          key={emoji}
+                          onClick={() => handleReaction(comment.id, emoji)}
+                          disabled={!isAuthenticated}
+                          title={!isAuthenticated ? 'Login to react' : undefined}
+                          className={`flex items-center gap-1 text-sm leading-none px-2 py-1 rounded-lg border transition-colors disabled:cursor-not-allowed ${
+                            active
+                              ? 'bg-[#0ea5e9]/10 border-[#0ea5e9]/40'
+                              : 'border-[rgba(148,163,184,0.12)] bg-[#0f172a] hover:border-[#0ea5e9]/40'
+                          }`}
+                        >
+                          <span>{emoji}</span>
+                          {count > 0 && <span className="text-xs text-text-muted">{count}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className="flex items-center gap-4 mt-2">
                     <button onClick={() => handleLike(comment.id)} className="flex items-center gap-1 text-xs text-text-muted hover:text-[#0ea5e9] transition-colors">
                       <ThumbsUp className="w-3.5 h-3.5" /> {comment.likes || 0}
@@ -237,11 +294,17 @@ export default function CommentsSection({ animeId, episodeId }) {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                               {reply.user_id ? (
-                                <Link to={`/user/${reply.user_id}`} className="text-text-primary text-xs font-medium hover:text-[#0ea5e9] transition-colors">
+                                <Link
+                                  to={`/user/${reply.user_id}`}
+                                  className="text-text-primary text-xs font-medium hover:text-[#0ea5e9] transition-colors"
+                                  style={nameStyle(reply.user_name_color)}
+                                >
                                   {reply.user_name || 'Anonymous'}
                                 </Link>
                               ) : (
-                                <span className="text-text-primary text-xs font-medium">{reply.user_name || 'Anonymous'}</span>
+                                <span className="text-text-primary text-xs font-medium" style={nameStyle(reply.user_name_color)}>
+                                  {reply.user_name || 'Anonymous'}
+                                </span>
                               )}
                               {reply.badges && reply.badges.slice(0, 2).map((badge) =>
                                 badge.is_verified ? (

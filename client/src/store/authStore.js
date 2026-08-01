@@ -30,10 +30,10 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  register: async (name, email, password) => {
+  register: async (name, email, password, referralCode) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post('/auth/register', { name, email, password });
+      const response = await api.post('/auth/register', { name, email, password, referralCode });
       const data = response.data.data || response.data;
       const { token, user } = data;
       localStorage.setItem('token', token);

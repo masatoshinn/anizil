@@ -124,6 +124,17 @@ CREATE TABLE IF NOT EXISTS comments (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS comment_reactions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  comment_id INT NOT NULL,
+  user_id INT NOT NULL,
+  reaction VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_comment_user_reaction (comment_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS reports (
   id INT AUTO_INCREMENT PRIMARY KEY,
   reporter_id INT NOT NULL,
@@ -262,6 +273,7 @@ CREATE TABLE IF NOT EXISTS badges (
   description VARCHAR(255) DEFAULT '',
   is_verified TINYINT(1) DEFAULT 0,
   is_active TINYINT(1) DEFAULT 1,
+  price_xp INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -275,6 +287,49 @@ CREATE TABLE IF NOT EXISTS user_badges (
   FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE,
   UNIQUE KEY unique_user_badge (user_id, badge_id)
 );
+
+CREATE TABLE IF NOT EXISTS name_colors (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  color_value VARCHAR(100) NOT NULL,
+  color_type ENUM('solid','gradient','animated') DEFAULT 'solid',
+  price_xp INT NOT NULL DEFAULT 500,
+  rarity ENUM('common','rare','epic','legendary') DEFAULT 'common',
+  is_active TINYINT(1) DEFAULT 1,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_name_colors (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  color_id INT NOT NULL,
+  purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (color_id) REFERENCES name_colors(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_color (user_id, color_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS profile_banners (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  image_url VARCHAR(500) NOT NULL,
+  price_xp INT NOT NULL DEFAULT 1000,
+  rarity ENUM('common','rare','epic','legendary') DEFAULT 'common',
+  is_active TINYINT(1) DEFAULT 1,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_banners (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  banner_id INT NOT NULL,
+  purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (banner_id) REFERENCES profile_banners(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_banner (user_id, banner_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS visitor_log (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -378,6 +433,7 @@ CREATE TABLE IF NOT EXISTS badges (
   description VARCHAR(255) DEFAULT '',
   is_verified TINYINT(1) DEFAULT 0,
   is_active TINYINT(1) DEFAULT 1,
+  price_xp INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -402,6 +458,8 @@ ALTER TABLE episode_sources ADD COLUMN IF NOT EXISTS source_type ENUM('embed','u
 ALTER TABLE anime ADD COLUMN IF NOT EXISTS is_premium TINYINT(1) DEFAULT 0;
 
 -- users: every column used by the login/auth flow (fixes auto-logout)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS active_frame_id INT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TINYINT(1) DEFAULT 1;
@@ -409,3 +467,71 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token VARCHAR(255) DEFAULT NUL
 ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token_expiry DATETIME DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255) DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expiry DATETIME DEFAULT NULL;
+
+-- =============================================
+-- SHOP 2.0: NAME COLORS, BANNERS, BUYABLE BADGES, PREMIUM XP
+-- =============================================
+
+-- users: active name color (hex/gradient/animated) + active banner
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active_name_color VARCHAR(100) DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active_banner_id INT DEFAULT NULL;
+
+-- badges: price_xp > 0 means the badge is purchasable in the shop
+ALTER TABLE badges ADD COLUMN IF NOT EXISTS price_xp INT NOT NULL DEFAULT 0;
+
+-- =============================================
+-- NAME COLORS (XP Shop item)
+-- =============================================
+INSERT INTO name_colors (name, color_value, color_type, price_xp, rarity, sort_order) VALUES
+('Default', '#f8fafc', 'solid', 0, 'common', 0),
+('Crimson Red', '#ef4444', 'solid', 200, 'common', 1),
+('Ocean Blue', '#0ea5e9', 'solid', 200, 'common', 2),
+('Forest Green', '#22c55e', 'solid', 200, 'common', 3),
+('Golden Sun', '#fbbf24', 'solid', 300, 'common', 4),
+('Royal Purple', '#a855f7', 'solid', 500, 'rare', 5),
+('Hot Pink', '#ec4899', 'solid', 500, 'rare', 6),
+('Tangerine', '#f97316', 'solid', 500, 'rare', 7),
+('Cyan Neon', '#22d3ee', 'solid', 800, 'rare', 8),
+('Ruby Red', '#dc2626', 'solid', 1000, 'epic', 9),
+('Emerald Glow', '#10b981', 'solid', 1000, 'epic', 10),
+('Amethyst', '#8b5cf6', 'solid', 1500, 'epic', 11),
+('Sunset Gradient', 'linear-gradient(90deg, #f97316, #ef4444)', 'gradient', 2000, 'epic', 12),
+('Ocean Gradient', 'linear-gradient(90deg, #0ea5e9, #6366f1)', 'gradient', 2000, 'epic', 13),
+('Gold Gradient', 'linear-gradient(90deg, #fbbf24, #f59e0b)', 'gradient', 2500, 'epic', 14),
+('Neon Purple Gradient', 'linear-gradient(90deg, #a855f7, #ec4899)', 'gradient', 2500, 'epic', 15),
+('Rainbow Animated', 'linear-gradient(90deg, #ef4444, #f97316, #fbbf24, #22c55e, #0ea5e9, #a855f7)', 'animated', 5000, 'legendary', 16),
+('Fire Animated', 'linear-gradient(90deg, #f97316, #ef4444, #fbbf24)', 'animated', 6000, 'legendary', 17),
+('Aurora Animated', 'linear-gradient(90deg, #22d3ee, #a855f7, #ec4899)', 'animated', 7000, 'legendary', 18);
+
+-- =============================================
+-- PROFILE BANNERS (XP Shop item)
+-- =============================================
+INSERT INTO profile_banners (name, image_url, price_xp, rarity, sort_order) VALUES
+('No Banner', '', 0, 'common', 0),
+('Sunset Horizon', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerSunset&backgroundColor=7c2d12', 1000, 'rare', 1),
+('Ocean Waves', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerOcean&backgroundColor=0c4a6e', 1500, 'rare', 2),
+('Neon City', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerNeon&backgroundColor=1e1b4b', 2500, 'epic', 3),
+('Forest Mist', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerForest&backgroundColor=052e16', 2500, 'epic', 4),
+('Galaxy Night', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerGalaxy&backgroundColor=172554', 4000, 'epic', 5),
+('Sakura Wind', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerSakura&backgroundColor=4a044e', 6000, 'legendary', 6),
+('Volcano Fury', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerVolcano&backgroundColor=450a0a', 8000, 'legendary', 7),
+('Celestial Dream', 'https://api.dicebear.com/7.x/shapes/svg?seed=bannerCelestial&backgroundColor=1e1b4b', 12000, 'legendary', 8);
+
+-- =============================================
+-- BUYABLE BADGES (price_xp > 0)
+-- =============================================
+INSERT INTO badges (name, icon, color, description, is_verified, is_active, price_xp)
+SELECT 'XP Hoarder', '💰', '#fbbf24', 'Owned 10000+ XP at once', 0, 1, 500
+WHERE NOT EXISTS (SELECT 1 FROM badges WHERE name = 'XP Hoarder');
+
+INSERT INTO badges (name, icon, color, description, is_verified, is_active, price_xp)
+SELECT 'Frame Collector', '🖼️', '#0ea5e9', 'Owned 5+ profile frames', 0, 1, 1500
+WHERE NOT EXISTS (SELECT 1 FROM badges WHERE name = 'Frame Collector');
+
+INSERT INTO badges (name, icon, color, description, is_verified, is_active, price_xp)
+SELECT 'Color Artist', '🎨', '#a855f7', 'Owned 5+ name colors', 0, 1, 2000
+WHERE NOT EXISTS (SELECT 1 FROM badges WHERE name = 'Color Artist');
+
+INSERT INTO badges (name, icon, color, description, is_verified, is_active, price_xp)
+SELECT 'Premium Elite', '💎', '#22c55e', 'Premium member badge', 0, 1, 3000
+WHERE NOT EXISTS (SELECT 1 FROM badges WHERE name = 'Premium Elite');

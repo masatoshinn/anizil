@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Play, Heart, Share2, Star, Calendar, Clock, Monitor, Globe, Building,
   ChevronRight, Grid3X3, List, Lock, ThumbsUp, Flag, Send, Download,
-  Crown, Coins,
+  Crown, Coins, Loader2,
 } from 'lucide-react';
 import useAnimeStore from '../store/animeStore';
 import useAuthStore from '../store/authStore';
@@ -12,6 +12,7 @@ import useSettingsStore from '../store/settingsStore';
 import AnimeCard from '../components/common/AnimeCard';
 import Skeleton from '../components/common/Skeleton';
 import GenreTag from '../components/common/GenreTag';
+import RatingSection from '../components/common/RatingSection';
 import { cn, formatDate, formatNumber, getStatusColor } from '../lib/utils';
 import useSEO from '../hooks/useSEO';
 import api from '../lib/api';
@@ -421,6 +422,13 @@ export default function AnimeDetailPage() {
               )}
             </motion.section>
 
+            {/* Ratings & Reviews */}
+            {!anime.id.toString().startsWith('ext_') && (
+              <motion.section variants={fadeIn}>
+                <RatingSection contentType="anime" contentId={anime.id} />
+              </motion.section>
+            )}
+
             {/* Comments */}
             <motion.section variants={fadeIn}>
               <h2 className="text-xl font-bold text-text-primary mb-4">Comments</h2>
@@ -488,11 +496,25 @@ export default function AnimeDetailPage() {
                             <Link
                               to={`/user/${comment.user_id}`}
                               className="text-text-primary text-sm font-medium hover:text-primary transition-colors"
+                              style={comment.user_name_color
+                                ? comment.user_name_color.startsWith('linear-gradient')
+                                  ? { color: 'transparent', backgroundImage: comment.user_name_color, WebkitBackgroundClip: 'text', backgroundClip: 'text' }
+                                  : { color: comment.user_name_color }
+                                : undefined}
                             >
                               {comment.user_name || 'Anonymous'}
                             </Link>
                           ) : (
-                            <span className="text-text-primary text-sm font-medium">{comment.user_name || 'Anonymous'}</span>
+                            <span
+                              className="text-text-primary text-sm font-medium"
+                              style={comment.user_name_color
+                                ? comment.user_name_color.startsWith('linear-gradient')
+                                  ? { color: 'transparent', backgroundImage: comment.user_name_color, WebkitBackgroundClip: 'text', backgroundClip: 'text' }
+                                  : { color: comment.user_name_color }
+                                : undefined}
+                            >
+                              {comment.user_name || 'Anonymous'}
+                            </span>
                           )}
                           {/* Show first 3 badges inline */}
                           {comment.badges && comment.badges.length > 0 && (

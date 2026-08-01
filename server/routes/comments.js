@@ -1,14 +1,49 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { getPool } = require('../config/database');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+const REACTIONS = ['👍', '❤️', '😂', '😢', '🔥'];
+
+// Resolve the logged-in user id without failing when the request is anonymous
+function getOptionalUserId(req) {
+  try {
+    let token = req.cookies?.token;
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+    if (!token) return null;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded.id || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function attachReactions(pool, comment, currentUserId) {
+  const [reactions] = await pool.query(
+    'SELECT reaction, COUNT(*) as count FROM comment_reactions WHERE comment_id = ? GROUP BY reaction',
+    [comment.id]
+  );
+  comment.reactions = reactions;
+  comment.my_reaction = null;
+  if (currentUserId) {
+    const [mine] = await pool.query(
+      'SELECT reaction FROM comment_reactions WHERE comment_id = ? AND user_id = ? LIMIT 1',
+      [comment.id, currentUserId]
+    );
+    comment.my_reaction = mine.length ? mine[0].reaction : null;
+  }
+}
+
 // Get comments by episode_id OR anime_id
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();
+    const currentUserId = getOptionalUserId(req);
     const { episode_id, anime_id, page = 1, limit = 20 } = req.query;
     const offset = (Math.max(1, parseInt(page)) - 1) * Math.min(100, Math.max(1, parseInt(limit)));
 
@@ -31,7 +66,7 @@ router.get('/', async (req, res) => {
     const total = countResult[0].total;
 
     const [comments] = await pool.query(
-      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id,
+      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
         pf.name as frame_name, pf.image_url as frame_image, pf.border_color as frame_color
        FROM comments c
        JOIN users u ON c.user_id = u.id
@@ -44,7 +79,7 @@ router.get('/', async (req, res) => {
 
     for (let comment of comments) {
       const [replies] = await pool.query(
-        `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id,
+        `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
           pf.name as frame_name, pf.image_url as frame_image, pf.border_color as frame_color
          FROM comments c
          JOIN users u ON c.user_id = u.id
@@ -65,6 +100,7 @@ router.get('/', async (req, res) => {
         [comment.user_id]
       );
       comment.badges = badges;
+      await attachReactions(pool, comment, currentUserId);
 
       for (let reply of replies) {
         const [replyBadges] = await pool.query(
@@ -76,6 +112,7 @@ router.get('/', async (req, res) => {
           [reply.user_id]
         );
         reply.badges = replyBadges;
+        await attachReactions(pool, reply, currentUserId);
       }
       comment.replies = replies;
 
@@ -111,6 +148,7 @@ router.get('/', async (req, res) => {
 router.get('/:episodeId', async (req, res) => {
   try {
     const pool = await getPool();
+    const currentUserId = getOptionalUserId(req);
     const { episodeId } = req.params;
     const { page = 1, limit = 20 } = req.query;
     const offset = (Math.max(1, parseInt(page)) - 1) * Math.min(100, Math.max(1, parseInt(limit)));
@@ -122,7 +160,7 @@ router.get('/:episodeId', async (req, res) => {
     const total = countResult[0].total;
 
     const [comments] = await pool.query(
-      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_name_color
        FROM comments c
        JOIN users u ON c.user_id = u.id
        WHERE c.episode_id = ? AND c.status = 'approved' AND c.parent_id IS NULL
@@ -133,7 +171,7 @@ router.get('/:episodeId', async (req, res) => {
 
     for (let comment of comments) {
       const [replies] = await pool.query(
-        `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+        `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_name_color
          FROM comments c
          JOIN users u ON c.user_id = u.id
          WHERE c.parent_id = ? AND c.status = 'approved'
@@ -151,6 +189,7 @@ router.get('/:episodeId', async (req, res) => {
         [comment.user_id]
       );
       comment.badges = badges;
+      await attachReactions(pool, comment, currentUserId);
 
       for (let reply of replies) {
         const [replyBadges] = await pool.query(
@@ -162,6 +201,7 @@ router.get('/:episodeId', async (req, res) => {
           [reply.user_id]
         );
         reply.badges = replyBadges;
+        await attachReactions(pool, reply, currentUserId);
       }
       comment.replies = replies;
 
@@ -238,7 +278,7 @@ router.post('/', auth, [
     );
 
     const [newComment] = await pool.query(
-      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id,
+      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
         pf.name as frame_name, pf.image_url as frame_image, pf.border_color as frame_color
        FROM comments c
        JOIN users u ON c.user_id = u.id
@@ -280,7 +320,7 @@ router.post('/', auth, [
 
     res.status(201).json({
       success: true,
-      data: { ...newComment[0], xp_earned: 5, new_xp: updatedUser[0].xp }
+      data: { ...newComment[0], reactions: [], my_reaction: null, xp_earned: 5, new_xp: updatedUser[0].xp }
     });
   } catch (error) {
     console.error('Add comment error:', error);
@@ -339,7 +379,7 @@ router.put('/:id', auth, [
 
     res.json({
       success: true,
-      data: updatedComment[0]
+      data: { ...updatedComment[0], reactions: [], my_reaction: null }
     });
   } catch (error) {
     console.error('Edit comment error:', error);
@@ -421,6 +461,68 @@ router.post('/:id/like', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Like comment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+router.post('/:id/reaction', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const { id } = req.params;
+    const { reaction } = req.body;
+
+    if (!REACTIONS.includes(reaction)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reaction'
+      });
+    }
+
+    const [comments] = await pool.query(
+      'SELECT id FROM comments WHERE id = ?',
+      [id]
+    );
+    if (comments.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found'
+      });
+    }
+
+    const [existing] = await pool.query(
+      'SELECT id, reaction FROM comment_reactions WHERE comment_id = ? AND user_id = ?',
+      [id, req.user.id]
+    );
+
+    let myReaction = reaction;
+    if (existing.length > 0) {
+      if (existing[0].reaction === reaction) {
+        await pool.query('DELETE FROM comment_reactions WHERE id = ?', [existing[0].id]);
+        myReaction = null;
+      } else {
+        await pool.query('UPDATE comment_reactions SET reaction = ? WHERE id = ?', [reaction, existing[0].id]);
+      }
+    } else {
+      await pool.query(
+        'INSERT INTO comment_reactions (comment_id, user_id, reaction) VALUES (?, ?, ?)',
+        [id, req.user.id, reaction]
+      );
+    }
+
+    const [reactions] = await pool.query(
+      'SELECT reaction, COUNT(*) as count FROM comment_reactions WHERE comment_id = ? GROUP BY reaction',
+      [id]
+    );
+
+    res.json({
+      success: true,
+      data: { reactions, my_reaction: myReaction }
+    });
+  } catch (error) {
+    console.error('Comment reaction error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

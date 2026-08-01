@@ -48,7 +48,7 @@ export default function RegisterPage() {
     e.preventDefault();
     clearError();
     if (!validate()) return;
-    const result = await register(name, email, password);
+    const result = await register(name, email, password, referralCode);
     if (result.success) {
       if (result.emailVerificationRequired) {
         navigate('/verify-email?sent=1');

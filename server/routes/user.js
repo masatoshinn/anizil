@@ -531,8 +531,11 @@ router.get('/users/:id', async (req, res) => {  try {
     }
 
     const [users] = await pool.query(
-      `SELECT id, name, avatar, bio, role, xp, level, created_at, active_frame_id
-       FROM users WHERE id = ?`,
+      `SELECT u.id, u.name, u.avatar, u.bio, u.role, u.xp, u.level, u.created_at, u.active_frame_id, u.active_name_color,
+        u.active_banner_id, pb.image_url as banner_image, pb.name as banner_name
+       FROM users u
+       LEFT JOIN profile_banners pb ON u.active_banner_id = pb.id
+       WHERE u.id = ?`,
       [id]
     );
     if (users.length === 0) {
@@ -600,6 +603,9 @@ router.get('/users/:id', async (req, res) => {  try {
           level: user.level,
           created_at: user.created_at,
           active_frame_id: user.active_frame_id,
+          active_name_color: user.active_name_color,
+          banner_image: user.banner_image,
+          banner_name: user.banner_name,
           badges
         },
         stats: {

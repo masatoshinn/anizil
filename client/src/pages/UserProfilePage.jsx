@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Calendar, MessageSquare, Bookmark, Trophy, CheckCircle, ListVideo, ChevronLeft, Loader2, UserPlus, UserCheck } from 'lucide-react';
+import { Calendar, MessageSquare, Bookmark, Trophy, CheckCircle, ListVideo, ChevronLeft, Loader2, UserPlus, UserCheck, Gift, Copy, Check } from 'lucide-react';
 import api from '../lib/api';
 import useSEO from '../hooks/useSEO';
 import useAuthStore from '../store/authStore';
@@ -21,6 +21,7 @@ export default function UserProfilePage() {
   const [error, setError] = useState('');
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useSEO({
     title: data?.user?.name ? `${data.user.name}'s Profile` : 'User Profile',
@@ -77,6 +78,19 @@ export default function UserProfilePage() {
     }
   }, [currentUser, isFollowing, id]);
 
+  const handleCopyReferral = async () => {
+    if (!currentUser?.referral_code) return;
+    try {
+      await navigator.clipboard.writeText(currentUser.referral_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const isOwnProfile = currentUser?.id && currentUser.id === Number(id);
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -105,6 +119,12 @@ export default function UserProfilePage() {
       {/* Header */}
       <section className="relative py-12 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0ea5e9]/10 via-[#0f172a] to-transparent" />
+        {user.banner_image && (
+          <div className="absolute inset-0">
+            <img src={user.banner_image} alt="" className="w-full h-full object-cover opacity-20" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0f172a]/60 via-[#0f172a]/40 to-[#0f172a]" />
+          </div>
+        )}
         <div className="relative max-w-4xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
             <div className="relative flex-shrink-0">
@@ -127,7 +147,16 @@ export default function UserProfilePage() {
             </div>
             <div className="text-center sm:text-left flex-1">
               <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 mb-1">
-                <h1 className="text-3xl font-bold text-[#f8fafc]">{user.name}</h1>
+                <h1
+                  className="text-3xl font-bold text-[#f8fafc]"
+                  style={user.active_name_color
+                    ? user.active_name_color.startsWith('linear-gradient')
+                      ? { color: 'transparent', backgroundImage: user.active_name_color, WebkitBackgroundClip: 'text', backgroundClip: 'text' }
+                      : { color: user.active_name_color }
+                    : undefined}
+                >
+                  {user.name}
+                </h1>
                 {user.role !== 'user' && (
                   <span className="badge badge-primary text-xs">{roleLabels[user.role] || user.role}</span>
                 )}
@@ -161,6 +190,29 @@ export default function UserProfilePage() {
           </div>
         </div>
       </section>
+
+      {/* Referral code (own profile only) */}
+      {isOwnProfile && currentUser?.referral_code && (
+        <section className="max-w-4xl mx-auto px-4 mb-8">
+          <div className="bg-gradient-to-r from-[#0ea5e9]/10 to-[#f59e0b]/10 border border-[#0ea5e9]/20 rounded-xl p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-[#f8fafc] flex items-center gap-2 mb-1">
+                  <Gift className="w-5 h-5 text-[#0ea5e9]" /> Your Referral Code
+                </h2>
+                <p className="text-[#94a3b8] text-sm">Share this code with friends — they can enter it when creating an account.</p>
+              </div>
+              <button
+                onClick={handleCopyReferral}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0ea5e9] hover:bg-[#0284c7] text-white rounded-lg font-medium transition-colors"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span className="font-mono font-bold tracking-wider">{copied ? 'Copied!' : currentUser.referral_code}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Stats */}
       <section className="max-w-4xl mx-auto px-4">

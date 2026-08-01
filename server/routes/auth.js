@@ -116,7 +116,7 @@ router.post('/register', [
       });
     }
 
-    const { name, email, password } = req.body;
+    const { name, email, password, referralCode: enteredReferralCode } = req.body;
 
     const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {
@@ -124,6 +124,22 @@ router.post('/register', [
         success: false,
         message: 'Email already registered'
       });
+    }
+
+    // Validate referral code (optional): the entered code belongs to the referrer
+    let referredBy = null;
+    if (enteredReferralCode && enteredReferralCode.trim()) {
+      const [referrer] = await pool.query(
+        'SELECT id FROM users WHERE referral_code = ?',
+        [enteredReferralCode.trim().toUpperCase()]
+      );
+      if (referrer.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid referral code'
+        });
+      }
+      referredBy = referrer[0].id;
     }
 
     const [settings] = await pool.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['registration_enabled']);
@@ -159,8 +175,8 @@ router.post('/register', [
     const verifyExpiry = mailEnabled ? new Date(Date.now() + 24 * 3600000) : null;
 
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password, avatar, referral_code, email_verified, verify_token, verify_token_expiry) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, avatar, referralCode, mailEnabled ? 0 : 1, verifyToken, verifyExpiry]
+      'INSERT INTO users (name, email, password, avatar, referral_code, referred_by, email_verified, verify_token, verify_token_expiry) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, avatar, referralCode, referredBy, mailEnabled ? 0 : 1, verifyToken, verifyExpiry]
     );
 
     if (mailEnabled && verifyToken) {
@@ -181,7 +197,7 @@ router.post('/register', [
     });
 
     const [newUser] = await pool.query(
-      'SELECT id, name, email, avatar, role, xp, level, created_at, email_verified FROM users WHERE id = ?',
+      'SELECT id, name, email, avatar, role, xp, level, created_at, email_verified, referral_code FROM users WHERE id = ?',
       [result.insertId]
     );
 
@@ -278,6 +294,7 @@ router.post('/login', [
           level: user.level,
           premium_until: user.premium_until,
           email_verified: user.email_verified,
+          referral_code: user.referral_code,
           created_at: user.created_at
         },
         token

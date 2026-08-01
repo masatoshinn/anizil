@@ -25,6 +25,7 @@ import api from '../../lib/api';
 
 const baseLinks = [
   { label: 'Home', path: '/' },
+  { label: 'Manga', path: '/manga' },
   { label: 'Genre', path: '/genres' },
   { label: 'Schedule', path: '/schedule' },
   { label: 'Forum', path: '/forum' },

@@ -25,6 +25,7 @@ import {
   ArrowLeft,
   LogOut,
   X,
+  BookOpen,
 } from 'lucide-react';
 
 const sidebarItems = [
@@ -34,6 +35,7 @@ const sidebarItems = [
   { icon: Upload, label: 'Anikoto Import', path: '/admin/import/anikoto', permission: 'manage_anime' },
   { icon: Layers, label: 'Anikoto Bulk Import', path: '/admin/import/anikoto-bulk', permission: 'manage_anime' },
   { icon: GitBranch, label: 'Anizen Import', path: '/admin/import/anizen', permission: 'manage_anime' },
+  { icon: BookOpen, label: 'Manga Import', path: '/admin/import/manga', permission: 'manage_anime' },
   { icon: MessageSquare, label: 'Comments', path: '/admin/comments', permission: 'manage_comments' },
   { icon: AlertTriangle, label: 'Reports', path: '/admin/reports', permission: 'manage_reports' },
   { icon: Users, label: 'User Management', path: '/admin/users', permission: 'manage_users' },

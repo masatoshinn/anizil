@@ -1,6 +1,9 @@
 const express = require('express');
 const { getPool } = require('../config/database');
 const { paginate } = require('../utils/helpers');
+const auth = require('../middleware/auth');
+const { importLimiter } = require('../middleware/rateLimit');
+const { importAnikotoAnime } = require('../utils/anikotoImporter');
 
 const router = express.Router();
 
@@ -449,6 +452,31 @@ router.get('/external/search', async (req, res) => {
     const data = await response.json();
     res.json({ success: true, data });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Auto-import an external anime into the DB. Called when a logged-in user starts
+// watching an anime that is not imported yet. Idempotent (no-op if already imported).
+router.post('/external/import', auth, importLimiter, async (req, res) => {
+  try {
+    const { anikoto_id } = req.body;
+    if (!anikoto_id) {
+      return res.status(400).json({ success: false, message: 'anikoto_id is required' });
+    }
+
+    const pool = await getPool();
+    const result = await importAnikotoAnime(pool, String(anikoto_id), req.user.id, false);
+
+    res.json({
+      success: true,
+      data: {
+        alreadyImported: result.alreadyImported,
+        anime: result.anime || { id: result.id }
+      }
+    });
+  } catch (error) {
+    console.error('Auto-import error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

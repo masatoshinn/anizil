@@ -40,6 +40,8 @@ const importRoutes = require('./routes/import');
 const searchRoutes = require('./routes/search');
 const shopRoutes = require('./routes/shop');
 const contactRoutes = require('./routes/contact');
+const mangaRoutes = require('./routes/manga');
+const ratingsRoutes = require('./routes/ratings');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/anime', animeRoutes);
@@ -52,6 +54,8 @@ app.use('/api/import', importRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/manga', mangaRoutes);
+app.use('/api/ratings', ratingsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

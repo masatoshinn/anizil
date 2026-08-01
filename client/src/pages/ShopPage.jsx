@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Coins, Gift, Crown, CreditCard, CheckCircle, Star, Package, Tag, ArrowRight,
-  Frame, Shield, Award, Sparkles, BadgeCheck,
+  Frame, Shield, Award, Sparkles, BadgeCheck, Palette, Image as ImageIcon, Timer,
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useSettingsStore from '../store/settingsStore';
@@ -42,10 +42,29 @@ export default function ShopPage() {
   // Badge state
   const [badges, setBadges] = useState([]);
   const [badgesLoading, setBadgesLoading] = useState(false);
+  const [ownedBadges, setOwnedBadges] = useState(new Set());
+  const [buyingBadge, setBuyingBadge] = useState(null);
+
+  // Name color state
+  const [colors, setColors] = useState([]);
+  const [ownedColors, setOwnedColors] = useState(new Set());
+  const [activeNameColor, setActiveNameColor] = useState(user?.active_name_color || null);
+  const [buyingColor, setBuyingColor] = useState(null);
+
+  // Banner state
+  const [banners, setBanners] = useState([]);
+  const [ownedBanners, setOwnedBanners] = useState(new Set());
+  const [activeBannerId, setActiveBannerId] = useState(user?.active_banner_id || null);
+  const [buyingBanner, setBuyingBanner] = useState(null);
+
+  // Premium (XP) state
+  const [buyingPremium, setBuyingPremium] = useState(null);
 
   useEffect(() => {
     loadFrames();
     loadBadges();
+    loadNameColors();
+    loadBanners();
     if (!fetched) fetchSettings();
     setLoading(false);
   }, [isAuthenticated]);
@@ -53,10 +72,47 @@ export default function ShopPage() {
   const loadBadges = async () => {
     setBadgesLoading(true);
     try {
-      const res = await api.get('/admin/badges');
+      const res = await api.get('/shop/badges');
       setBadges(res.data.data || []);
+      if (isAuthenticated) {
+        const myRes = await api.get('/shop/badges/my');
+        const myBadges = myRes.data.data || [];
+        setOwnedBadges(new Set(myBadges.map(b => b.id)));
+      }
     } catch {}
     setBadgesLoading(false);
+  };
+
+  const loadNameColors = async () => {
+    try {
+      const res = await api.get('/shop/name-colors');
+      const data = res.data.data || res.data;
+      setColors(Array.isArray(data) ? data : []);
+      if (isAuthenticated) {
+        const myRes = await api.get('/shop/name-colors/my');
+        const myData = myRes.data.data || {};
+        setOwnedColors(new Set((myData.colors || []).map(c => c.id)));
+        setActiveNameColor(myData.active_name_color || null);
+      }
+    } catch (err) {
+      console.error('Failed to load name colors:', err);
+    }
+  };
+
+  const loadBanners = async () => {
+    try {
+      const res = await api.get('/shop/banners');
+      const data = res.data.data || res.data;
+      setBanners(Array.isArray(data) ? data : []);
+      if (isAuthenticated) {
+        const myRes = await api.get('/shop/banners/my');
+        const myData = myRes.data.data || {};
+        setOwnedBanners(new Set((myData.banners || []).map(b => b.id)));
+        setActiveBannerId(myData.active_banner_id || null);
+      }
+    } catch (err) {
+      console.error('Failed to load banners:', err);
+    }
   };
 
   const loadFrames = async () => {
@@ -115,6 +171,125 @@ export default function ShopPage() {
     setBuyingFrame(null);
   };
 
+  const handleColorPurchase = async (color) => {
+    if (!isAuthenticated) {
+      window.location.href = '/login';
+      return;
+    }
+    setBuyingColor(color.id);
+    setPurchaseMsg('');
+    try {
+      const res = await api.post('/shop/name-colors/purchase', { color_id: color.id });
+      setPurchaseMsg(res.data.message || 'Color purchased!');
+      setOwnedColors(prev => new Set([...prev, color.id]));
+      setActiveNameColor(color.color_value);
+      if (user && res.data.data?.new_xp !== undefined) {
+        useAuthStore.setState({ user: { ...user, xp: res.data.data.new_xp, active_name_color: color.color_value } });
+      }
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    } catch (err) {
+      setPurchaseMsg(err.response?.data?.message || 'Failed');
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    }
+    setBuyingColor(null);
+  };
+
+  const handleColorActivate = async (color) => {
+    if (!isAuthenticated) return;
+    try {
+      const targetId = activeNameColor === color.color_value ? 0 : color.id;
+      await api.post('/shop/name-colors/activate', { color_id: targetId });
+      setActiveNameColor(targetId === 0 ? null : color.color_value);
+      if (user) {
+        useAuthStore.setState({ user: { ...user, active_name_color: targetId === 0 ? null : color.color_value } });
+      }
+    } catch (err) {
+      setPurchaseMsg(err.response?.data?.message || 'Failed');
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    }
+  };
+
+  const handleBannerPurchase = async (banner) => {
+    if (!isAuthenticated) {
+      window.location.href = '/login';
+      return;
+    }
+    setBuyingBanner(banner.id);
+    setPurchaseMsg('');
+    try {
+      const res = await api.post('/shop/banners/purchase', { banner_id: banner.id });
+      setPurchaseMsg(res.data.message || 'Banner purchased!');
+      setOwnedBanners(prev => new Set([...prev, banner.id]));
+      setActiveBannerId(banner.id);
+      if (user && res.data.data?.new_xp !== undefined) {
+        useAuthStore.setState({ user: { ...user, xp: res.data.data.new_xp, active_banner_id: banner.id } });
+      }
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    } catch (err) {
+      setPurchaseMsg(err.response?.data?.message || 'Failed');
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    }
+    setBuyingBanner(null);
+  };
+
+  const handleBannerActivate = async (banner) => {
+    if (!isAuthenticated) return;
+    try {
+      const targetId = activeBannerId === banner.id ? 0 : banner.id;
+      await api.post('/shop/banners/activate', { banner_id: targetId });
+      setActiveBannerId(targetId === 0 ? null : banner.id);
+      if (user) {
+        useAuthStore.setState({ user: { ...user, active_banner_id: targetId === 0 ? null : banner.id } });
+      }
+    } catch (err) {
+      setPurchaseMsg(err.response?.data?.message || 'Failed');
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    }
+  };
+
+  const handleBadgePurchase = async (badge) => {
+    if (!isAuthenticated) {
+      window.location.href = '/login';
+      return;
+    }
+    setBuyingBadge(badge.id);
+    setPurchaseMsg('');
+    try {
+      const res = await api.post('/shop/badges/purchase', { badge_id: badge.id });
+      setPurchaseMsg(res.data.message || 'Badge purchased!');
+      setOwnedBadges(prev => new Set([...prev, badge.id]));
+      if (user && res.data.data?.new_xp !== undefined) {
+        useAuthStore.setState({ user: { ...user, xp: res.data.data.new_xp } });
+      }
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    } catch (err) {
+      setPurchaseMsg(err.response?.data?.message || 'Failed');
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    }
+    setBuyingBadge(null);
+  };
+
+  const handlePremiumPurchase = async (plan) => {
+    if (!isAuthenticated) {
+      window.location.href = '/login';
+      return;
+    }
+    setBuyingPremium(plan.days);
+    setPurchaseMsg('');
+    try {
+      const res = await api.post('/shop/premium/purchase', { days: plan.days });
+      setPurchaseMsg(res.data.message || 'Premium added!');
+      if (user && res.data.data?.new_xp !== undefined) {
+        useAuthStore.setState({ user: { ...user, xp: res.data.data.new_xp, premium_until: res.data.data.premium_until } });
+      }
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    } catch (err) {
+      setPurchaseMsg(err.response?.data?.message || 'Failed');
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    }
+    setBuyingPremium(null);
+  };
+
   const RARITY_COLORS = {
     common: 'text-[#94a3b8] border-[#94a3b8]/30 bg-[#94a3b8]/5',
     rare: 'text-[#0ea5e9] border-[#0ea5e9]/30 bg-[#0ea5e9]/5',
@@ -169,7 +344,7 @@ export default function ShopPage() {
           <h2 className="text-2xl font-bold text-[#f8fafc] mb-2 flex items-center gap-2">
             <BadgeCheck className="w-6 h-6 text-[#0ea5e9]" /> Badges
           </h2>
-          <p className="text-[#94a3b8] text-sm mb-6">Earn badges by contributing to the community. Admins assign badges to recognize members.</p>
+          <p className="text-[#94a3b8] text-sm mb-6">Admins assign badges to recognize members. Some badges can be bought with XP!</p>
           {badgesLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
               {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
@@ -194,6 +369,23 @@ export default function ShopPage() {
                       ✓ Official Badge
                     </span>
                   ) : null}
+                  {badge.price_xp > 0 ? (
+                    ownedBadges.has(badge.id) ? (
+                      <span className="inline-flex items-center gap-1 mt-2 text-xs text-green-400 font-medium">
+                        <CheckCircle className="w-3 h-3" /> Owned
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleBadgePurchase(badge)}
+                        disabled={buyingBadge === badge.id}
+                        className="mt-2 w-full py-1.5 bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        {buyingBadge === badge.id ? 'Buying...' : `${formatNumber(badge.price_xp)} XP`}
+                      </button>
+                    )
+                  ) : (
+                    <span className="block mt-1 text-[10px] text-[#94a3b8]">Admin Award</span>
+                  )}
                 </motion.div>
               ))}
             </motion.div>
@@ -308,6 +500,199 @@ export default function ShopPage() {
             <div className="text-center py-8 text-[#94a3b8]">No frames available yet</div>
           )}
         </section>
+
+        {/* Name Colors */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-[#f8fafc] mb-2 flex items-center gap-2">
+            <Palette className="w-6 h-6 text-[#0ea5e9]" /> Name Colors
+          </h2>
+          <p className="text-[#94a3b8] text-sm mb-6">Buy a color for your username — it shows in comments and on your profile</p>
+          {colors.length > 0 ? (
+            <motion.div
+              variants={container}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"
+            >
+              {colors.map((color) => {
+                const owned = ownedColors.has(color.id);
+                const active = activeNameColor === color.color_value;
+                const isGradient = color.color_type === 'gradient' || color.color_type === 'animated';
+                const isAnimated = color.color_type === 'animated';
+                return (
+                  <motion.div
+                    key={color.id}
+                    variants={fadeIn}
+                    className={cn(
+                      'relative bg-[#1e293b] border rounded-xl p-5 text-center transition-all hover:scale-[1.02]',
+                      active ? 'border-green-400/60 shadow-lg shadow-green-400/10' : RARITY_COLORS[color.rarity] || 'border-[rgba(148,163,184,0.12)]'
+                    )}
+                  >
+                    <div
+                      className={cn('text-2xl font-bold mb-2', isAnimated && 'animate-gradient-x')}
+                      style={isGradient
+                        ? { backgroundImage: color.color_value, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
+                        : { color: color.color_value }}
+                    >
+                      Ab
+                    </div>
+                    <h3 className="text-sm font-bold text-[#f8fafc] mb-1">{color.name}</h3>
+                    <span className={cn('text-[10px] font-bold uppercase tracking-wider', RARITY_COLORS[color.rarity]?.split(' ')[0])}>
+                      {color.rarity}
+                    </span>
+                    {color.price_xp === 0 ? (
+                      <button
+                        onClick={() => handleColorActivate(color)}
+                        disabled={!isAuthenticated}
+                        className={cn('mt-2 w-full py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50',
+                          active ? 'bg-green-500/15 text-green-400 border border-green-400/40' : 'bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white')}
+                      >
+                        {active ? 'Active' : 'Use'}
+                      </button>
+                    ) : owned ? (
+                      <button
+                        onClick={() => handleColorActivate(color)}
+                        className={cn('mt-2 w-full py-1.5 rounded-lg text-xs font-medium transition-colors',
+                          active ? 'bg-green-500/15 text-green-400 border border-green-400/40' : 'bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white')}
+                      >
+                        {active ? 'Active' : 'Use'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleColorPurchase(color)}
+                        disabled={buyingColor === color.id}
+                        className="mt-2 w-full py-1.5 bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        {buyingColor === color.id ? 'Buying...' : `${formatNumber(color.price_xp)} XP`}
+                      </button>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          ) : (
+            <div className="text-center py-8 text-[#94a3b8]">No name colors available yet</div>
+          )}
+        </section>
+
+        {/* Profile Banners */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-[#f8fafc] mb-2 flex items-center gap-2">
+            <ImageIcon className="w-6 h-6 text-[#0ea5e9]" /> Profile Banners
+          </h2>
+          <p className="text-[#94a3b8] text-sm mb-6">Customize your profile header with a banner</p>
+          {banners.length > 0 ? (
+            <motion.div
+              variants={container}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"
+            >
+              {banners.map((banner) => {
+                const owned = ownedBanners.has(banner.id);
+                const active = activeBannerId === banner.id;
+                return (
+                  <motion.div
+                    key={banner.id}
+                    variants={fadeIn}
+                    className={cn(
+                      'relative bg-[#1e293b] border rounded-xl overflow-hidden text-center transition-all hover:scale-[1.02]',
+                      active ? 'border-green-400/60 shadow-lg shadow-green-400/10' : RARITY_COLORS[banner.rarity] || 'border-[rgba(148,163,184,0.12)]'
+                    )}
+                  >
+                    <div className="h-16 w-full bg-[#0f172a]">
+                      {banner.image_url ? (
+                        <img src={banner.image_url} alt={banner.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-5 h-5 text-[#94a3b8]" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-sm font-bold text-[#f8fafc] mb-1">{banner.name}</h3>
+                      <span className={cn('text-[10px] font-bold uppercase tracking-wider', RARITY_COLORS[banner.rarity]?.split(' ')[0])}>
+                        {banner.rarity}
+                      </span>
+                      {banner.price_xp === 0 ? (
+                        <button
+                          onClick={() => handleBannerActivate(banner)}
+                          disabled={!isAuthenticated}
+                          className={cn('mt-2 w-full py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50',
+                            active ? 'bg-green-500/15 text-green-400 border border-green-400/40' : 'bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white')}
+                        >
+                          {active ? 'Active' : 'Use'}
+                        </button>
+                      ) : owned ? (
+                        <button
+                          onClick={() => handleBannerActivate(banner)}
+                          className={cn('mt-2 w-full py-1.5 rounded-lg text-xs font-medium transition-colors',
+                            active ? 'bg-green-500/15 text-green-400 border border-green-400/40' : 'bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white')}
+                        >
+                          {active ? 'Active' : 'Use'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleBannerPurchase(banner)}
+                          disabled={buyingBanner === banner.id}
+                          className="mt-2 w-full py-1.5 bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                        >
+                          {buyingBanner === banner.id ? 'Buying...' : `${formatNumber(banner.price_xp)} XP`}
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          ) : (
+            <div className="text-center py-8 text-[#94a3b8]">No banners available yet</div>
+          )}
+        </section>
+
+        {/* Buy Premium with XP */}
+        {premiumEnabled && (
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-[#f8fafc] mb-2 flex items-center gap-2">
+            <Timer className="w-6 h-6 text-yellow-400" /> Buy Premium with XP
+          </h2>
+          <p className="text-[#94a3b8] text-sm mb-6">Spend XP to get premium days — no money needed</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { days: 7, xp: 1500 },
+              { days: 30, xp: 5000, popular: true },
+              { days: 90, xp: 12000 },
+            ].map((plan) => (
+              <div
+                key={plan.days}
+                className={cn(
+                  'relative bg-[#1e293b] border rounded-2xl p-8 text-center transition-all hover:scale-[1.02]',
+                  plan.popular ? 'border-[#0ea5e9]/50 shadow-lg shadow-[#0ea5e9]/10' : 'border-[rgba(148,163,184,0.12)]'
+                )}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0ea5e9] text-white text-xs px-3 py-1 rounded-full font-medium">
+                    Best Value
+                  </div>
+                )}
+                <Crown className="w-10 h-10 text-yellow-400 mx-auto mb-4" />
+                <div className="text-3xl font-bold text-[#f8fafc] mb-1">{plan.days} days</div>
+                <div className="text-[#94a3b8] text-sm mb-6">Premium</div>
+                <div className="text-[#0ea5e9] font-bold mb-4">{formatNumber(plan.xp)} XP</div>
+                <button
+                  onClick={() => handlePremiumPurchase(plan)}
+                  disabled={buyingPremium === plan.days}
+                  className="w-full py-3 bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+                >
+                  {buyingPremium === plan.days ? 'Buying...' : `Get ${plan.days} Days`}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+        )}
 
         {premiumEnabled && (
         <section className="mb-12">

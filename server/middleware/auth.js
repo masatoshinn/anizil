@@ -22,7 +22,7 @@ const auth = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const [users] = await pool.query('SELECT id, name, email, avatar, role, is_banned, xp, level, premium_until, active_frame_id, email_verified, created_at FROM users WHERE id = ?', [decoded.id]);
+    const [users] = await pool.query('SELECT id, name, email, avatar, role, is_banned, xp, level, premium_until, active_frame_id, active_name_color, active_banner_id, email_verified, referral_code, created_at FROM users WHERE id = ?', [decoded.id]);
 
     if (users.length === 0) {
       return res.status(401).json({

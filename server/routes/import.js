@@ -3,7 +3,9 @@ const { getPool } = require('../config/database');
 const auth = require('../middleware/auth');
 const { adminAuth, requirePermission } = require('../middleware/adminAuth');
 const { generateSlug, delay } = require('../utils/helpers');
+const { importAnikotoAnime } = require('../utils/anikotoImporter');
 const { importLimiter } = require('../middleware/rateLimit');
+const { searchMangaDex, getMangaDexInfo, getMangaChapters, importMangaIntoDb } = require('../utils/mangaImporter');
 
 const router = express.Router();
 
@@ -90,112 +92,13 @@ router.post('/anikoto', requirePermission('add_anime'), async (req, res) => {
     }
 
     const pool = await getPool();
-    const [existing] = await pool.query('SELECT id FROM anime WHERE anikoto_id = ?', [anikoto_id]);
-    if (existing.length > 0) {
+    const result = await importAnikotoAnime(pool, anikoto_id, req.user.id, is_premium);
+
+    if (result.alreadyImported) {
       return res.status(400).json({ success: false, message: 'Anime already imported' });
     }
 
-    // Fetch series details with episodes from Anikoto API
-    const response = await fetch(`https://anikotoapi.site/series/${anikoto_id}`);
-    if (!response.ok) {
-      return res.status(500).json({ success: false, message: `Anikoto API error: ${response.statusText}` });
-    }
-    const apiData = await response.json();
-    if (!apiData.ok) {
-      return res.status(500).json({ success: false, message: 'Anikoto API returned error' });
-    }
-
-    const animeInfo = apiData.data.anime;
-    const episodes = apiData.data.episodes || [];
-
-    const title = animeInfo.title || 'Unknown Title';
-    const slug = generateSlug(title);
-
-    const [existingSlug] = await pool.query('SELECT id FROM anime WHERE slug = ?', [slug]);
-    let finalSlug = slug;
-    if (existingSlug.length > 0) {
-      finalSlug = `${slug}-${Date.now()}`;
-    }
-
-    const genres = animeInfo.terms_by_type?.genre
-      ? animeInfo.terms_by_type.genre.join(',')
-      : '';
-    const studio = animeInfo.terms_by_type?.studios
-      ? animeInfo.terms_by_type.studios.join(',')
-      : '';
-    const anilist_id = animeInfo.ani_id || null;
-    const mal_id = animeInfo.mal_id || null;
-
-    const [result] = await pool.query(
-      `INSERT INTO anime (title, slug, description, poster, banner, genres, studio,
-        rating, mal_score, release_year, duration, language, status, episode_count,
-        anilist_id, mal_id, anikoto_id, is_premium)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        title,
-        finalSlug,
-        animeInfo.description || '',
-        animeInfo.poster || '',
-        animeInfo.background_image || '',
-        genres,
-        studio,
-        animeInfo.score || 0,
-        animeInfo.score || 0,
-        animeInfo.year || null,
-        animeInfo.duration ? `${animeInfo.duration}m` : '',
-        animeInfo.is_dub ? 'dub' : 'sub',
-        animeInfo.status === 'Currently Airing' ? 'ongoing' : 'completed',
-        episodes.length || 0,
-        anilist_id,
-        mal_id,
-        anikoto_id,
-        is_premium ? 1 : 0
-      ]
-    );
-
-    const animeId = result.insertId;
-
-    // Insert episodes with actual embed URLs from API
-    for (const ep of episodes) {
-      const [epResult] = await pool.query(
-        'INSERT INTO episodes (anime_id, episode_number, title, description, thumbnail, duration) VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          animeId,
-          ep.number,
-          ep.title || `Episode ${ep.number}`,
-          '',
-          '',
-          ''
-        ]
-      );
-
-      // Add SUB source
-      if (ep.embed_url?.sub) {
-        await pool.query(
-          'INSERT INTO episode_sources (episode_id, language, server_name, video_url, embed_link, source_type) VALUES (?, ?, ?, ?, ?, ?)',
-          [epResult.insertId, 'sub', 'MegaPlay', ep.embed_url.sub, null, 'embed']
-        );
-      }
-
-      // Add DUB source
-      if (ep.embed_url?.dub) {
-        await pool.query(
-          'INSERT INTO episode_sources (episode_id, language, server_name, video_url, embed_link, source_type) VALUES (?, ?, ?, ?, ?, ?)',
-          [epResult.insertId, 'dub', 'MegaPlay', ep.embed_url.dub, null, 'embed']
-        );
-      }
-    }
-
-    // Update episode count
-    await pool.query('UPDATE anime SET episode_count = ? WHERE id = ?', [episodes.length, animeId]);
-
-    await pool.query(
-      'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
-      [req.user.id, 'import_anime', `Imported from Anikoto: ${title} (${episodes.length} episodes)`]
-    );
-
-    const [newAnime] = await pool.query('SELECT * FROM anime WHERE id = ?', [animeId]);
-    res.status(201).json({ success: true, data: newAnime[0] });
+    res.status(201).json({ success: true, data: result.anime });
   } catch (error) {
     console.error('Import from Anikoto error:', error);
     res.status(500).json({ success: false, message: `Import failed: ${error.message}` });
@@ -363,6 +266,138 @@ router.post('/anizen', requirePermission('add_anime'), importLimiter, async (req
   } catch (error) {
     console.error('Import from Anizen error:', error);
     res.status(500).json({ success: false, message: `Import failed: ${error.message}` });
+  }
+});
+
+// ===== MANGA (MangaDex) IMPORT =====
+
+// Check MangaDex API status
+router.get('/manga/status', async (req, res) => {
+  try {
+    const data = await searchMangaDex('one piece', 1);
+    res.json({ success: true, online: (data.total || 0) >= 0 });
+  } catch (error) {
+    res.json({ success: true, online: false });
+  }
+});
+
+// Search MangaDex
+router.get('/manga/search', async (req, res) => {
+  try {
+    const { q, page = 1, limit = 20 } = req.query;
+    if (!q) return res.json({ success: true, data: { manga: [], total: 0 } });
+    const offset = (Math.max(1, parseInt(page)) - 1) * Math.min(100, Math.max(1, parseInt(limit)));
+    const data = await searchMangaDex(q, Math.min(100, Math.max(1, parseInt(limit))), offset);
+
+    const pool = await getPool();
+    const withStatus = await Promise.all(data.manga.map(async (m) => {
+      const [existing] = await pool.query('SELECT id FROM mangas WHERE mangadex_id = ?', [m.id]);
+      return { ...m, imported: existing.length > 0 };
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        manga: withStatus,
+        total: data.total,
+        limit: data.limit,
+        offset: data.offset,
+        totalPages: Math.ceil(data.total / data.limit) || 1,
+      },
+    });
+  } catch (error) {
+    console.error('MangaDex search error:', error);
+    res.status(502).json({ success: false, message: 'MangaDex API unavailable' });
+  }
+});
+
+// MangaDex detail + chapters (preview before import)
+router.get('/manga/info', async (req, res) => {
+  try {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ success: false, message: 'id is required' });
+    const info = await getMangaDexInfo(id);
+    const chapters = await getMangaChapters(id);
+    const pool = await getPool();
+    const [existing] = await pool.query('SELECT id FROM mangas WHERE mangadex_id = ?', [id]);
+    res.json({
+      success: true,
+      data: { ...info, chapters: chapters.slice(0, 50), chapterCount: chapters.length, imported: existing.length > 0 },
+    });
+  } catch (error) {
+    console.error('MangaDex info error:', error);
+    res.status(502).json({ success: false, message: error.message });
+  }
+});
+
+// Import manga + chapters from MangaDex
+router.post('/manga', requirePermission('add_anime'), importLimiter, async (req, res) => {
+  try {
+    const { mangadex_id } = req.body;
+    if (!mangadex_id) {
+      return res.status(400).json({ success: false, message: 'mangadex_id is required' });
+    }
+
+    const pool = await getPool();
+    const result = await importMangaIntoDb(pool, mangadex_id, req.user.id);
+
+    if (result.alreadyImported) {
+      return res.status(400).json({ success: false, message: 'Manga already imported' });
+    }
+
+    res.status(201).json({ success: true, data: result.manga });
+  } catch (error) {
+    console.error('Import manga error:', error);
+    res.status(500).json({ success: false, message: `Import failed: ${error.message}` });
+  }
+});
+
+// Refresh chapters for an imported manga
+router.post('/manga/:id/refresh', requirePermission('add_anime'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    const [manga] = await pool.query('SELECT mangadex_id, title FROM mangas WHERE id = ?', [id]);
+    if (manga.length === 0 || !manga[0].mangadex_id) {
+      return res.status(404).json({ success: false, message: 'Manga not found or no MangaDex id' });
+    }
+
+    const chapters = await getMangaChapters(manga[0].mangadex_id);
+    for (const ch of chapters) {
+      await pool.query(
+        `INSERT IGNORE INTO manga_chapters (manga_id, chapter_uuid, chapter_number, title, volume, language, scanlation_group, external_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          ch.chapter_uuid,
+          ch.chapter_number,
+          ch.title || `Chapter ${ch.chapter_number || '?'}`,
+          ch.volume,
+          ch.language,
+          ch.scanlation_group,
+          ch.external_url,
+        ]
+      );
+    }
+
+    const [count] = await pool.query('SELECT COUNT(*) as total FROM manga_chapters WHERE manga_id = ?', [id]);
+    res.json({ success: true, message: `Refreshed chapters for ${manga[0].title}`, data: { total: count[0].total } });
+  } catch (error) {
+    console.error('Refresh manga chapters error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete imported manga (cascades chapters)
+router.delete('/manga/:id', requirePermission('add_anime'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    await pool.query('DELETE FROM mangas WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Manga deleted' });
+  } catch (error) {
+    console.error('Delete manga error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

@@ -104,7 +104,10 @@ export default function SearchPage() {
 
   const filteredResults = searchResults.filter((anime) => {
     if (selectedGenres.length > 0) {
-      const animeGenres = (anime.genres || []).map((g) => (typeof g === 'string' ? g : g.name));
+      const rawGenres = anime.genres;
+      const animeGenres = (Array.isArray(rawGenres) ? rawGenres : String(rawGenres || '').split(','))
+        .map((g) => (typeof g === 'string' ? g.trim() : g.name || g))
+        .filter(Boolean);
       if (!selectedGenres.some((g) => animeGenres.includes(g))) return false;
     }
     if (selectedStatus && anime.status?.toLowerCase() !== selectedStatus.toLowerCase()) return false;
@@ -305,7 +308,12 @@ export default function SearchPage() {
                   className="grid grid-cols-2 sm:grid-cols-3 gap-4"
                 >
                   {filteredResults.map((anime, i) => (
-                    <motion.div key={anime._id || anime.slug || i} variants={fadeIn}>
+                    <motion.div key={anime._id || anime.slug || i} variants={fadeIn} className="relative">
+                      {anime.imported === false && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 rounded-full bg-[#f59e0b]/90 text-[10px] font-bold text-black">
+                          External
+                        </div>
+                      )}
                       <AnimeCard anime={anime} />
                     </motion.div>
                   ))}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Play, MessageSquare, Info, Keyboard, List, Crown, Coins, Loader2, Lock } from 'lucide-react';
@@ -34,6 +34,19 @@ export default function WatchPage() {
   const [purchasingAnime, setPurchasingAnime] = useState(false);
 
   const epNum = parseInt(episodeNumber, 10);
+  const autoImportedRef = useRef(null);
+
+  // When watching an external (not-yet-imported) anime, auto-save it to the DB
+  // so it becomes searchable and stays available even if the API goes down.
+  useEffect(() => {
+    if (!currentAnime?.anikoto_id || !currentAnime?.id) return;
+    const isExt = currentAnime.id.toString().startsWith('ext_');
+    if (isExt && currentAnime.imported === false) {
+      if (autoImportedRef.current === currentAnime.id) return;
+      autoImportedRef.current = currentAnime.id;
+      api.post('/anime/external/import', { anikoto_id: currentAnime.anikoto_id }).catch(() => {});
+    }
+  }, [currentAnime?.id, currentAnime?.anikoto_id]);
 
   useEffect(() => {
     fetchAnimeBySlug(animeSlug);
