@@ -17,6 +17,9 @@ export default function MangaReaderPage() {
   const [error, setError] = useState('');
   const [useSaver, setUseSaver] = useState(false);
   const [showList, setShowList] = useState(false);
+  const [failedPages, setFailedPages] = useState(new Set());
+
+  const markFailed = (i) => setFailedPages((prev) => new Set(prev).add(i));
 
   useSEO({ title: data?.chapter?.title || 'Manga Reader', description: 'Read manga chapters online' });
 
@@ -168,18 +171,32 @@ export default function MangaReaderPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            {pages.map((src, i) => (
+            {pages.map((src, i) =>
+              failedPages.has(i) ? (
+                <div key={i} className="w-full aspect-[3/4] flex flex-col items-center justify-center rounded-lg bg-[#0f172a] border border-border-custom text-center px-4">
+                  <BookOpen className="w-8 h-8 text-[#94a3b8] mb-2" />
+                  <p className="text-text-muted text-sm">Page {i + 1} failed to load</p>
+                  <button
+                    onClick={() => setFailedPages((prev) => { const n = new Set(prev); n.delete(i); return n; })}
+                    className="mt-3 px-4 py-1.5 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
               <motion.img
                 key={i}
                 src={src}
                 alt={`Page ${i + 1}`}
                 loading="lazy"
+                onError={() => markFailed(i)}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
                 className="w-full rounded-lg shadow-lg bg-[#0f172a]"
               />
-            ))}
+              )
+            )}
           </div>
         )}
 

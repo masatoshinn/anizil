@@ -63,15 +63,16 @@ export function truncate(str, len = 50) {
   return str.slice(0, len).trimEnd() + '...';
 }
 
-const MANGA_IMAGE_HOSTS = ['uploads.mangadex.org', 'mangadex.network', 'cm.blazefast.co', 'api.mangadex.org'];
+const MANGA_IMAGE_SUFFIXES = ['mangadex.org', 'mangadex.network', 'mangadex.net', 'blazefast.co'];
 
 // Route MangaDex-hosted images through our backend proxy so covers/pages
-// always load (avoids MangaDex hotlink / Referer blocking).
+// always load (avoids MangaDex hotlink / Referer blocking). Matched by
+// suffix so uploads.mangadex.network, api.mangadex.org, etc. all work.
 export function mangaImage(url) {
   if (!url) return '';
   try {
     const u = new URL(url);
-    if (MANGA_IMAGE_HOSTS.includes(u.hostname)) {
+    if (MANGA_IMAGE_SUFFIXES.some((s) => u.hostname === s || u.hostname.endsWith('.' + s))) {
       return `/api/manga/image?url=${encodeURIComponent(url)}`;
     }
   } catch {

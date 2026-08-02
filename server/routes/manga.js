@@ -7,8 +7,12 @@ const { adminAuth, requirePermission } = require('../middleware/adminAuth');
 
 const router = express.Router();
 
-// Hosts whose images we are allowed to proxy (MangaDex asset servers / CDN)
-const PROXY_HOSTS = ['uploads.mangadex.org', 'mangadex.network', 'cm.blazefast.co', 'api.mangadex.org'];
+// Hosts whose images we are allowed to proxy (any MangaDex asset server / CDN).
+// Matched by suffix so uploads.mangadex.network, api.mangadex.org, mdex.net, etc. all work.
+const PROXY_HOST_SUFFIXES = ['mangadex.org', 'mangadex.network', 'mangadex.net', 'blazefast.co'];
+function isProxyAllowed(host) {
+  return PROXY_HOST_SUFFIXES.some((s) => host === s || host.endsWith('.' + s));
+}
 
 // Proxy MangaDex images through our server to avoid hotlink / Referer blocking.
 // Must be defined before the /:slug route so it isn't captured as a slug.
@@ -23,7 +27,7 @@ router.get('/image', async (req, res) => {
     } catch (e) {
       return res.status(400).json({ success: false, message: 'Invalid url' });
     }
-    if (!PROXY_HOSTS.includes(parsed.hostname)) {
+    if (!isProxyAllowed(parsed.hostname)) {
       return res.status(403).json({ success: false, message: 'Domain not allowed' });
     }
 
