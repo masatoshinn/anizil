@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Coins, Gift, Crown, CreditCard, CheckCircle, Star, Package, Tag, ArrowRight,
   Frame, Shield, Award, Sparkles, BadgeCheck, Palette, Image as ImageIcon, Timer,
+  CalendarCheck,
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useSettingsStore from '../store/settingsStore';
@@ -15,10 +16,12 @@ const fadeIn = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 
 const CREDIT_PACKS = [
+  { id: 'tiny', amount: 250, xp: 250, bonus: 0, price: '$0.49', popular: false },
   { id: 'small', amount: 500, xp: 500, bonus: 0, price: '$0.99', popular: false },
   { id: 'medium', amount: 1500, xp: 1500, bonus: 150, price: '$2.49', popular: false },
   { id: 'large', amount: 5000, xp: 5000, bonus: 750, price: '$6.99', popular: true },
   { id: 'mega', amount: 15000, xp: 15000, bonus: 3000, price: '$17.99', popular: false },
+  { id: 'ultimate', amount: 50000, xp: 50000, bonus: 12500, price: '$49.99', popular: false },
 ];
 
 const XP_METHODS = [
@@ -60,14 +63,49 @@ export default function ShopPage() {
   // Premium (XP) state
   const [buyingPremium, setBuyingPremium] = useState(null);
 
+  // Daily reward state
+  const [dailyClaimed, setDailyClaimed] = useState(null);
+  const [claiming, setClaiming] = useState(false);
+
   useEffect(() => {
     loadFrames();
     loadBadges();
     loadNameColors();
     loadBanners();
+    loadDailyStatus();
     if (!fetched) fetchSettings();
     setLoading(false);
   }, [isAuthenticated]);
+
+  const loadDailyStatus = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await api.get('/shop/daily');
+      setDailyClaimed(res.data?.data?.claimed_today ?? false);
+    } catch {}
+  };
+
+  const handleDailyClaim = async () => {
+    if (!isAuthenticated) {
+      window.location.href = '/login';
+      return;
+    }
+    setClaiming(true);
+    setPurchaseMsg('');
+    try {
+      const res = await api.post('/shop/daily/claim');
+      setDailyClaimed(true);
+      setPurchaseMsg(res.data.message || 'Daily reward claimed!');
+      if (user && res.data.data?.new_xp !== undefined) {
+        useAuthStore.setState({ user: { ...user, xp: res.data.data.new_xp } });
+      }
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    } catch (err) {
+      setPurchaseMsg(err.response?.data?.message || 'Already claimed today');
+      setTimeout(() => setPurchaseMsg(''), 3000);
+    }
+    setClaiming(false);
+  };
 
   const loadBadges = async () => {
     setBadgesLoading(true);
@@ -320,6 +358,40 @@ export default function ShopPage() {
             </div>
           )}
         </motion.div>
+
+        {/* Daily Reward */}
+        <section className="mb-12">
+          <div className={cn(
+            'relative overflow-hidden rounded-2xl border p-8 text-center',
+            dailyClaimed ? 'border-green-400/40 bg-[#1e293b]' : 'border-[#0ea5e9]/40 bg-gradient-to-br from-[#0ea5e9]/15 to-[#1e293b]'
+          )}>
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#0ea5e9] to-transparent" />
+            <CalendarCheck className="w-10 h-10 text-[#0ea5e9] mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-[#f8fafc] mb-2">Daily Reward</h2>
+            <p className="text-[#94a3b8] mb-1">
+              {dailyClaimed ? 'You already claimed today — come back tomorrow!' : 'Claim free XP every day just for logging in'}
+            </p>
+            <div className="text-[#0ea5e9] text-lg font-bold mb-5">+25 XP</div>
+            <button
+              onClick={handleDailyClaim}
+              disabled={!isAuthenticated || dailyClaimed || claiming}
+              className={cn(
+                'px-8 py-3 rounded-lg font-semibold transition-colors disabled:cursor-not-allowed',
+                dailyClaimed
+                  ? 'bg-green-500/15 text-green-400 border border-green-400/40'
+                  : 'bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white'
+              )}
+            >
+              {!isAuthenticated
+                ? 'Log in to claim'
+                : claiming
+                  ? 'Claiming...'
+                  : dailyClaimed
+                    ? 'Claimed ✔'
+                    : 'Claim Daily Reward'}
+            </button>
+          </div>
+        </section>
 
         {/* How to Earn XP */}
         <section className="mb-12">

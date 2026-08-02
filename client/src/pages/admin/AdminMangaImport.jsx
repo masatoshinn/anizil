@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Download, Check, Loader2, Wifi, WifiOff, BookOpen } from 'lucide-react';
 import api from '../../lib/api';
-import { cn } from '../../lib/utils';
+import { cn, mangaImage } from '../../lib/utils';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
 
@@ -99,7 +99,7 @@ export default function AdminMangaImport() {
               return (
                 <div key={item.id} className="card-anime overflow-hidden group">
                   <div className="relative aspect-[3/4]">
-                    <img src={item.poster || '/placeholder-poster.png'} alt={item.title} className="w-full h-full object-cover" />
+                    <img src={mangaImage(item.poster) || '/placeholder-poster.png'} alt={item.title} className="w-full h-full object-cover" />
                     {isImported && (
                       <div className="absolute top-2 right-2 badge badge-success flex items-center gap-1">
                         <Check className="w-3 h-3" /> Imported

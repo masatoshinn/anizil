@@ -89,10 +89,12 @@ router.post('/purchase', auth, async (req, res) => {
     const pool = await getPool();
 
     const PACKS = {
+      tiny: { xp: 250, price: '$0.49' },
       small: { xp: 500, price: '$0.99' },
       medium: { xp: 1500, price: '$2.49' },
       large: { xp: 5000, price: '$6.99' },
       mega: { xp: 15000, price: '$17.99' },
+      ultimate: { xp: 50000, price: '$49.99' },
     };
 
     const pack = PACKS[itemId];
@@ -673,6 +675,61 @@ router.post('/badges/purchase', auth, async (req, res) => {
     res.json({ success: true, message: `Purchased ${badge.name} badge!`, data: { new_xp: updatedUser[0].xp } });
   } catch (error) {
     console.error('Purchase badge error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// =============================================
+// DAILY REWARD
+// =============================================
+const DAILY_REWARD_XP = 25;
+
+// Get daily reward status (already claimed today? streak?)
+router.get('/daily', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [rows] = await pool.query(
+      "SELECT created_at FROM activity_feed WHERE user_id = ? AND action = 'daily_claim' ORDER BY created_at DESC LIMIT 1",
+      [req.user.id]
+    );
+    const last = rows[0]?.created_at || null;
+    const claimedToday = last ? new Date(last).toDateString() === new Date().toDateString() : false;
+    res.json({
+      success: true,
+      data: { claimed_today: claimedToday, last_claim: last, reward: DAILY_REWARD_XP }
+    });
+  } catch (error) {
+    console.error('Daily status error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Claim the daily reward (once per calendar day)
+router.post('/daily/claim', auth, async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [rows] = await pool.query(
+      "SELECT id FROM activity_feed WHERE user_id = ? AND action = 'daily_claim' AND DATE(created_at) = CURRENT_DATE LIMIT 1",
+      [req.user.id]
+    );
+    if (rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'Daily reward already claimed today' });
+    }
+
+    await pool.query('UPDATE users SET xp = xp + ? WHERE id = ?', [DAILY_REWARD_XP, req.user.id]);
+    await pool.query(
+      "INSERT INTO activity_feed (user_id, action, details) VALUES (?, 'daily_claim', ?)",
+      [req.user.id, `Claimed daily reward (+${DAILY_REWARD_XP} XP)`]
+    );
+
+    const [user] = await pool.query('SELECT xp FROM users WHERE id = ?', [req.user.id]);
+    res.json({
+      success: true,
+      message: `Daily reward claimed! +${DAILY_REWARD_XP} XP`,
+      data: { new_xp: user[0].xp }
+    });
+  } catch (error) {
+    console.error('Daily claim error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

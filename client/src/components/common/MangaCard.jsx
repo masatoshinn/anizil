@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { BookOpen, Star } from 'lucide-react';
+import { mangaImage } from '../../lib/utils';
 
 export default function MangaCard({ manga }) {
   const {
@@ -26,7 +27,7 @@ export default function MangaCard({ manga }) {
       <Link to={`/manga/${slug}`} className="group block card-anime overflow-hidden">
         <div className="relative aspect-[3/4] overflow-hidden rounded-t-xl bg-panel">
           <img
-            src={poster || '/placeholder-poster.png'}
+            src={mangaImage(poster) || '/placeholder-poster.png'}
             alt={title}
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"

@@ -63,6 +63,23 @@ export function truncate(str, len = 50) {
   return str.slice(0, len).trimEnd() + '...';
 }
 
+const MANGA_IMAGE_HOSTS = ['uploads.mangadex.org', 'mangadex.network', 'cm.blazefast.co', 'api.mangadex.org'];
+
+// Route MangaDex-hosted images through our backend proxy so covers/pages
+// always load (avoids MangaDex hotlink / Referer blocking).
+export function mangaImage(url) {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    if (MANGA_IMAGE_HOSTS.includes(u.hostname)) {
+      return `/api/manga/image?url=${encodeURIComponent(url)}`;
+    }
+  } catch {
+    /* ignore invalid urls */
+  }
+  return url;
+}
+
 export function getStatusColor(status) {
   const colors = {
     airing: 'bg-green-500/20 text-green-400 border-green-500/30',

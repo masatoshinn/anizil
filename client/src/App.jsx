@@ -7,6 +7,7 @@ import useThemeStore from './store/themeStore';
 
 import Layout from './components/layout/Layout';
 import AdminLayout from './components/layout/AdminLayout';
+import CustomCursor from './components/CustomCursor';
 
 import HomePage from './pages/HomePage';
 import AnimeDetailPage from './pages/AnimeDetailPage';
@@ -55,6 +56,7 @@ import AdminBadges from './pages/admin/AdminBadges';
 import AdminMessages from './pages/admin/AdminMessages';
 import AdminVisitors from './pages/admin/AdminVisitors';
 import AdminMangaImport from './pages/admin/AdminMangaImport';
+import AdminManga from './pages/admin/AdminManga';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -122,6 +124,7 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-[#0f172a] text-[#f8fafc]">
+        <CustomCursor />
         <Toaster
           position="bottom-right"
           toastOptions={{
@@ -200,6 +203,7 @@ function App() {
               <Route path="/admin/import/anikoto-bulk" element={<AdminAnikotoBulkImport />} />
               <Route path="/admin/import/anizen" element={<AdminAnizenImport />} />
               <Route path="/admin/import/manga" element={<AdminMangaImport />} />
+              <Route path="/admin/manga" element={<AdminManga />} />
               <Route path="/admin/ads" element={<AdminAds />} />
               <Route path="/admin/roles" element={<AdminRoles />} />
               <Route path="/admin/redeem" element={<AdminRedeem />} />
@@ -220,6 +224,7 @@ function App() {
               <Route path="/mod/import/anikoto-bulk" element={<AdminAnikotoBulkImport />} />
               <Route path="/mod/import/anizen" element={<AdminAnizenImport />} />
               <Route path="/mod/import/manga" element={<AdminMangaImport />} />
+              <Route path="/mod/manga" element={<AdminManga />} />
               <Route path="/mod/comments" element={<AdminComments />} />
               <Route path="/mod/reports" element={<AdminReports />} />
             </Route>

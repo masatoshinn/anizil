@@ -10,7 +10,7 @@ import Skeleton from '../components/common/Skeleton';
 import GenreTag from '../components/common/GenreTag';
 import RatingSection from '../components/common/RatingSection';
 import useSEO from '../hooks/useSEO';
-import { cn, formatNumber, getStatusColor } from '../lib/utils';
+import { cn, formatNumber, getStatusColor, mangaImage } from '../lib/utils';
 
 const fadeIn = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
@@ -23,7 +23,7 @@ export default function MangaDetailPage() {
   useSEO({
     title: manga?.title || 'Manga Details',
     description: manga?.description ? `${manga.description.slice(0, 160)}...` : undefined,
-    image: manga?.poster || undefined,
+    image: mangaImage(manga?.poster) || undefined,
   });
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export default function MangaDetailPage() {
     <div className="min-h-screen">
       <div className="relative h-[300px] md:h-[400px]">
         <img
-          src={manga.poster}
+          src={mangaImage(manga.poster)}
           alt={manga.title}
           className="w-full h-full object-cover"
         />
@@ -102,7 +102,7 @@ export default function MangaDetailPage() {
             <div className="flex flex-col sm:flex-row gap-6 mb-8">
               <motion.img
                 variants={fadeIn}
-                src={manga.poster}
+                src={mangaImage(manga.poster)}
                 alt={manga.title}
                 className="w-48 sm:w-56 flex-shrink-0 rounded-xl shadow-2xl mx-auto sm:mx-0 object-cover aspect-[3/4]"
               />

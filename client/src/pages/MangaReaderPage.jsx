@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, BookOpen, Loader2, List, ArrowLeft } from 'lucide-react';
 import api from '../lib/api';
 import useSEO from '../hooks/useSEO';
-import { cn } from '../lib/utils';
+import { cn, mangaImage } from '../lib/utils';
 
 export default function MangaReaderPage() {
   const { id } = useParams();
@@ -35,9 +35,9 @@ export default function MangaReaderPage() {
   const currentIndex = chapterList.findIndex((c) => c.chapter_uuid === chapterUuid);
   const prevChapter = currentIndex > 0 ? chapterList[currentIndex - 1] : null;
   const nextChapter = currentIndex >= 0 && currentIndex < chapterList.length - 1 ? chapterList[currentIndex + 1] : null;
-  const pages = useSaver && data?.chapter?.dataSaver?.length
+  const pages = (useSaver && data?.chapter?.dataSaver?.length
     ? data.chapter.dataSaver
-    : (data?.chapter?.pages || []);
+    : (data?.chapter?.pages || [])).map((src) => mangaImage(src));
 
   const goChapter = (uuid) => {
     if (!uuid) return;

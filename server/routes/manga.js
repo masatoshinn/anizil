@@ -2,8 +2,57 @@ const express = require('express');
 const { getPool } = require('../config/database');
 const { paginate } = require('../utils/helpers');
 const { getChapterPages } = require('../utils/mangaImporter');
+const auth = require('../middleware/auth');
+const { adminAuth, requirePermission } = require('../middleware/adminAuth');
 
 const router = express.Router();
+
+// Hosts whose images we are allowed to proxy (MangaDex asset servers / CDN)
+const PROXY_HOSTS = ['uploads.mangadex.org', 'mangadex.network', 'cm.blazefast.co', 'api.mangadex.org'];
+
+// Proxy MangaDex images through our server to avoid hotlink / Referer blocking.
+// Must be defined before the /:slug route so it isn't captured as a slug.
+router.get('/image', async (req, res) => {
+  try {
+    const url = req.query.url;
+    if (!url) return res.status(400).json({ success: false, message: 'url is required' });
+
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch (e) {
+      return res.status(400).json({ success: false, message: 'Invalid url' });
+    }
+    if (!PROXY_HOSTS.includes(parsed.hostname)) {
+      return res.status(403).json({ success: false, message: 'Domain not allowed' });
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    const upstream = await fetch(url, {
+      headers: {
+        'User-Agent': 'anizil/1.0',
+        'Referer': 'https://mangadex.org/',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!upstream.ok) {
+      return res.status(502).json({ success: false, message: 'Upstream image error' });
+    }
+
+    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.send(buf);
+  } catch (error) {
+    console.error('Image proxy error:', error);
+    res.status(502).json({ success: false, message: 'Image proxy error' });
+  }
+});
 
 // Simple in-memory cache for external MangaDex calls
 const apiCache = new Map();
@@ -52,7 +101,9 @@ router.get('/', async (req, res) => {
     const total = countResult[0].total;
 
     const [manga] = await pool.query(
-      `SELECT * FROM mangas ${whereClause} ${orderClause} LIMIT ? OFFSET ?`,
+      `SELECT mangas.*,
+              (SELECT COUNT(*) FROM manga_chapters mc WHERE mc.manga_id = mangas.id) AS chapter_count
+       FROM mangas ${whereClause} ${orderClause} LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
 
@@ -217,6 +268,52 @@ router.get('/:slug', async (req, res) => {
     });
   } catch (error) {
     console.error('Get manga detail error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Admin: update manga metadata
+router.put('/:id', auth, adminAuth, requirePermission('add_anime'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title, author, artist, description, genres, year, status,
+      content_rating, demography, is_featured
+    } = req.body;
+
+    await pool.query(
+      `UPDATE mangas SET
+          title = COALESCE(?, title),
+          author = COALESCE(?, author),
+          artist = COALESCE(?, artist),
+          description = COALESCE(?, description),
+          genres = COALESCE(?, genres),
+          year = COALESCE(?, year),
+          status = COALESCE(?, status),
+          content_rating = COALESCE(?, content_rating),
+          demography = COALESCE(?, demography),
+          is_featured = COALESCE(?, is_featured)
+        WHERE id = ?`,
+      [title, author, artist, description, genres, year, status, content_rating, demography, is_featured, id]
+    );
+
+    const [manga] = await pool.query('SELECT * FROM mangas WHERE id = ?', [id]);
+    res.json({ success: true, data: manga[0] });
+  } catch (error) {
+    console.error('Update manga error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Admin: toggle featured flag
+router.patch('/:id/featured', auth, adminAuth, requirePermission('add_anime'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isFeatured = req.body.is_featured ? 1 : 0;
+    await pool.query('UPDATE mangas SET is_featured = ? WHERE id = ?', [isFeatured, id]);
+    res.json({ success: true, is_featured: req.body.is_featured ? true : false });
+  } catch (error) {
+    console.error('Toggle featured error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
