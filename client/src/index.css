@@ -317,23 +317,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s ease;
 }
 
-.custom-cursor .cc-arrow-svg {
+.custom-cursor .cc-cursor-img {
   display: block;
+  width: 26px;
+  height: auto;
+  max-height: 26px;
+  pointer-events: none;
+  -webkit-user-drag: none;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
-  transition: width 0.15s ease, height 0.15s ease;
 }
 
-.custom-cursor.is-active .cc-arrow-svg {
+.custom-cursor.is-active .cc-cursor-img {
   width: 22px;
-  height: 22px;
 }
 
-.custom-cursor.is-pressed .cc-arrow-svg {
+.custom-cursor.is-pressed .cc-cursor-img {
   width: 19px;
-  height: 19px;
 }
 
 .custom-cursor .cc-label {

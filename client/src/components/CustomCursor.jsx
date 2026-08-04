@@ -32,7 +32,7 @@ export default function CustomCursor() {
       setActive(!!target);
       setLabel(target?.dataset?.cursorLabel || '');
       if (arrowRef.current) {
-        arrowRef.current.style.transform = `translate(${mx}px, ${my}px) translate(-5px, -3px)`;
+        arrowRef.current.style.transform = `translate(${mx}px, ${my}px) translate(-5px, -4px)`;
       }
     };
 
@@ -78,21 +78,12 @@ export default function CustomCursor() {
         aria-hidden="true"
         className={`custom-cursor ${active ? 'is-active' : ''} ${pressed ? 'is-pressed' : ''} ${label ? 'has-label' : ''}`}
       >
-        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" className="cc-arrow-svg">
-          <defs>
-            <linearGradient id="anizil-cursor-grad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="var(--primary)" />
-              <stop offset="1" stopColor="var(--primary-hover)" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M5 3 L21.5 17 L14.5 15.5 L20.5 24 L17 24.5 L11 16 L5 20 Z"
-            fill="url(#anizil-cursor-grad)"
-            stroke="white"
-            strokeWidth="1.2"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <img
+          src="/cursor.png"
+          alt=""
+          draggable={false}
+          className="cc-cursor-img"
+        />
         {label && <span className="cc-label">{label}</span>}
       </div>
     </>
