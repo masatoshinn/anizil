@@ -42,6 +42,7 @@ const shopRoutes = require('./routes/shop');
 const contactRoutes = require('./routes/contact');
 const mangaRoutes = require('./routes/manga');
 const ratingsRoutes = require('./routes/ratings');
+const creatorRoutes = require('./routes/creator');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/anime', animeRoutes);
@@ -56,7 +57,9 @@ app.use('/api/shop', shopRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/manga', mangaRoutes);
 app.use('/api/ratings', ratingsRoutes);
+app.use('/api/creator', creatorRoutes);
 
+// Health check endpoint returning API status
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -87,6 +90,7 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Start the HTTP server on the configured port
 app.listen(PORT, () => {
   console.log(`Anizil server running on port ${PORT}`); //[cite: 1]
   console.log(`Environment: ${NODE_ENV}`); //[cite: 1]

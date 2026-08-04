@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Play, Star, Crown } from 'lucide-react';
 import useSettingsStore from '../../store/settingsStore';
 
+// Displays an anime card with poster, status, rating and premium badge.
 export default function AnimeCard({ anime }) {
   const { premiumEnabled, fetched, fetchSettings } = useSettingsStore();
   useEffect(() => { if (!fetched) fetchSettings(); }, []);

@@ -4,6 +4,7 @@ import {
   Loader2, AlertCircle, SkipForward, RotateCcw, Gauge,
 } from 'lucide-react';
 
+// Formats a seconds value into a m:ss time string.
 function formatTime(s) {
   if (!s || isNaN(s)) return '0:00';
   const m = Math.floor(s / 60);
@@ -29,6 +30,7 @@ async function resolveVast(vastUrl) {
   }
 }
 
+// Custom video player with ads, controls, shortcuts and embed fallback.
 export default function VideoPlayer({ src, type = 'file', poster, title, showAds = false, adConfig, onEnded }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);

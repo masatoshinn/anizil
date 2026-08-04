@@ -15,11 +15,13 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
+// Admin page showing site analytics for a selected date range.
 export default function AdminAnalytics() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7d');
 
+  // Fetches analytics stats for the current date range.
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {

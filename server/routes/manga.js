@@ -10,6 +10,7 @@ const router = express.Router();
 // Hosts whose images we are allowed to proxy (any MangaDex asset server / CDN).
 // Matched by suffix so uploads.mangadex.network, api.mangadex.org, mdex.net, etc. all work.
 const PROXY_HOST_SUFFIXES = ['mangadex.org', 'mangadex.network', 'mangadex.net', 'blazefast.co'];
+// Check if a hostname is in the allowed MangaDex proxy domain list.
 function isProxyAllowed(host) {
   return PROXY_HOST_SUFFIXES.some((s) => host === s || host.endsWith('.' + s));
 }
@@ -60,15 +61,18 @@ router.get('/image', async (req, res) => {
 
 // Simple in-memory cache for external MangaDex calls
 const apiCache = new Map();
+// Read a cached API entry if it is still within its TTL window.
 function getCached(key, ttlMs = 300000) {
   const entry = apiCache.get(key);
   if (entry && Date.now() - entry.ts < ttlMs) return entry.data;
   return null;
 }
+// Store data in the cache with the current timestamp.
 function setCache(key, data) {
   apiCache.set(key, { data, ts: Date.now() });
 }
 
+// List manga with optional genre, status, and search filters plus sorting.
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();
@@ -124,6 +128,7 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Return up to 10 featured manga sorted by rating.
 router.get('/featured', async (req, res) => {
   try {
     const pool = await getPool();
@@ -136,6 +141,7 @@ router.get('/featured', async (req, res) => {
   }
 });
 
+// Return the 20 most recently added manga.
 router.get('/recent', async (req, res) => {
   try {
     const pool = await getPool();
@@ -146,6 +152,7 @@ router.get('/recent', async (req, res) => {
   }
 });
 
+// Collect and sort a unique list of all manga genres.
 router.get('/genres', async (req, res) => {
   try {
     const pool = await getPool();
@@ -241,6 +248,7 @@ router.get('/:id/read', async (req, res) => {
   }
 });
 
+// Return full manga detail with chapters and similar titles by slug or id.
 router.get('/:slug', async (req, res) => {
   try {
     const pool = await getPool();
@@ -282,7 +290,7 @@ router.put('/:id', auth, adminAuth, requirePermission('add_anime'), async (req, 
     const { id } = req.params;
     const {
       title, author, artist, description, genres, year, status,
-      content_rating, demography, is_featured
+      content_rating, demography, is_featured, created_by
     } = req.body;
 
     await pool.query(
@@ -296,9 +304,10 @@ router.put('/:id', auth, adminAuth, requirePermission('add_anime'), async (req, 
           status = COALESCE(?, status),
           content_rating = COALESCE(?, content_rating),
           demography = COALESCE(?, demography),
-          is_featured = COALESCE(?, is_featured)
+          is_featured = COALESCE(?, is_featured),
+          created_by = COALESCE(?, created_by)
         WHERE id = ?`,
-      [title, author, artist, description, genres, year, status, content_rating, demography, is_featured, id]
+      [title, author, artist, description, genres, year, status, content_rating, demography, is_featured, created_by, id]
     );
 
     const [manga] = await pool.query('SELECT * FROM mangas WHERE id = ?', [id]);

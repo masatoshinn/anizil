@@ -14,6 +14,7 @@ import Skeleton from '../components/common/Skeleton';
 import GenreTag from '../components/common/GenreTag';
 import RatingSection from '../components/common/RatingSection';
 import { cn, formatDate, formatNumber, getStatusColor } from '../lib/utils';
+import BadgeIcon from '../components/common/BadgeIcon';
 import useSEO from '../hooks/useSEO';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
@@ -22,6 +23,7 @@ const fadeIn = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
 const FREE_EPISODE_LIMIT = 3;
 
+// AnimeDetailPage: renders anime info, episodes, ratings, and comments for a single anime
 export default function AnimeDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -75,6 +77,7 @@ export default function AnimeDetailPage() {
     }
   }, [currentAnime?.id]);
 
+  // Checks whether the user already has access to this premium anime
   const checkPremiumAccess = async () => {
     try {
       const res = await api.get(`/shop/anime-access/${currentAnime.id}`);
@@ -84,6 +87,7 @@ export default function AnimeDetailPage() {
     }
   };
 
+  // Purchases premium anime access for the user in exchange for XP
   const handlePurchaseAnime = async () => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -103,6 +107,7 @@ export default function AnimeDetailPage() {
     setPurchasingAnime(false);
   };
 
+  // Loads the comment thread for the current anime
   const loadComments = async () => {
     try {
       const res = await api.get(`/comments?anime_id=${currentAnime.id}`);
@@ -111,6 +116,7 @@ export default function AnimeDetailPage() {
     } catch {}
   };
 
+  // Posts a new comment and prepends it to the comment list
   const handleSubmitComment = async (e) => {
     e.preventDefault();
     if (!commentText.trim() || !isAuthenticated) return;
@@ -130,11 +136,13 @@ export default function AnimeDetailPage() {
     setCommentLoading(false);
   };
 
+  // Copies the current page URL to the clipboard
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     toast.success('Link copied!');
   };
 
+  // Adds the current anime to the user's watchlist
   const handleAddToWatchlist = async () => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -149,6 +157,7 @@ export default function AnimeDetailPage() {
     }
   };
 
+  // Imports the current anime from Anikoto and refreshes details
   const handleImport = async () => {
     if (!currentAnime.anikoto_id && !currentAnime.ani_id) return;
     setImporting(true);
@@ -162,6 +171,7 @@ export default function AnimeDetailPage() {
     setImporting(false);
   };
 
+  // Determines whether a given episode is locked behind a premium paywall
   const isPremiumLocked = (epNum) => {
     if (!premiumEnabled) return false;
     if (user?.role === 'super_admin' || user?.role === 'content_admin') return false;
@@ -518,17 +528,17 @@ export default function AnimeDetailPage() {
                           )}
                           {/* Show first 3 badges inline */}
                           {comment.badges && comment.badges.length > 0 && (
-                            <div className="flex items-center gap-0.5">
+                            <div className="flex items-center gap-1.5 ml-1.5">
                               {comment.badges.slice(0, 3).map((badge) => {
                                 const isVerified = badge.is_verified || badge.name === 'Verified';
                                 return isVerified ? (
-                                  <span key={badge.id} className="inline-flex items-center justify-center w-4 h-4 rounded-full"
+                                  <span key={badge.id} className="inline-flex items-center justify-center w-4 h-4 rounded-full cursor-default"
                                     style={{ backgroundColor: badge.color }}
-                                    title={`Verified: ${badge.name}`}>
+                                    title={badge.name}>
                                     <span className="text-[9px] text-white font-bold">✓</span>
                                   </span>
                                 ) : (
-                                  <span key={badge.id} className="text-[11px]" title={badge.name}>{badge.icon}</span>
+                                  <span key={badge.id} className="text-[11px] leading-none cursor-default" style={{ color: badge.color }} title={badge.name}><BadgeIcon icon={badge.icon} /></span>
                                 );
                               })}
                               {comment.badges.length > 3 && (

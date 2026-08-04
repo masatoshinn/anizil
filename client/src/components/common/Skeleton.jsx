@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 const shimmer =
   'relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.5s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/5 before:to-transparent';
 
+// Base shimmering placeholder box used by all skeletons.
 function SkeletonBox({ className = '' }) {
   return (
     <div className={`bg-panel rounded-lg ${shimmer} ${className}`} />
   );
 }
 
+// Loading placeholder mimicking the anime card layout.
 export function AnimeCardSkeleton() {
   return (
     <div className="card-anime overflow-hidden">
@@ -21,6 +23,7 @@ export function AnimeCardSkeleton() {
   );
 }
 
+// Loading placeholder mimicking the episode card layout.
 export function EpisodeCardSkeleton() {
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-surface">
@@ -33,6 +36,7 @@ export function EpisodeCardSkeleton() {
   );
 }
 
+// Loading placeholder for the public user profile section.
 export function ProfileSkeleton() {
   return (
     <div className="flex flex-col items-center gap-4 p-6">
@@ -48,6 +52,7 @@ export function ProfileSkeleton() {
   );
 }
 
+// Loading placeholder rendering a given number of text lines.
 export function TextSkeleton({ lines = 3, className = '' }) {
   return (
     <div className={`space-y-2.5 ${className}`}>
@@ -61,12 +66,14 @@ export function TextSkeleton({ lines = 3, className = '' }) {
   );
 }
 
+// Loading placeholder for a title/heading bar.
 export function TitleSkeleton({ className = '' }) {
   return (
     <SkeletonBox className={`h-6 w-48 rounded ${className}`} />
   );
 }
 
+// Dispatcher rendering the appropriate skeleton by type.
 export default function Skeleton({ type = 'text', ...props }) {
   switch (type) {
     case 'anime-card':

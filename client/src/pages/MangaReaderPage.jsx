@@ -6,6 +6,7 @@ import api from '../lib/api';
 import useSEO from '../hooks/useSEO';
 import { cn, mangaImage } from '../lib/utils';
 
+// MangaReaderPage: reads a manga chapter page-by-page with data saver and chapter navigation
 export default function MangaReaderPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -19,6 +20,7 @@ export default function MangaReaderPage() {
   const [showList, setShowList] = useState(false);
   const [failedPages, setFailedPages] = useState(new Set());
 
+  // Marks a page index as failed to load so it can show a retry state
   const markFailed = (i) => setFailedPages((prev) => new Set(prev).add(i));
 
   useSEO({ title: data?.chapter?.title || 'Manga Reader', description: 'Read manga chapters online' });
@@ -42,6 +44,7 @@ export default function MangaReaderPage() {
     ? data.chapter.dataSaver
     : (data?.chapter?.pages || [])).map((src) => mangaImage(src));
 
+  // Navigates to another chapter and scrolls back to the top
   const goChapter = (uuid) => {
     if (!uuid) return;
     navigate(`/manga/${id}/read?chapter=${uuid}`);

@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
 
+// Admin page to search and import anime from Anizen.
 export default function AdminAnizenImport() {
   const [spotlight, setSpotlight] = useState([]);
   const [loadingSpotlight, setLoadingSpotlight] = useState(true);
@@ -19,6 +20,7 @@ export default function AdminAnizenImport() {
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => {
+    // Fetches spotlight anime from the Anizen home feed.
     const fetchSpotlight = async () => {
       try {
         const res = await api.get('/import/anizen/home');
@@ -33,6 +35,7 @@ export default function AdminAnizenImport() {
     fetchSpotlight();
   }, []);
 
+  // Searches Anizen for anime matching a query.
   const fetchResults = useCallback(async (query, p = 1) => {
     if (!query) return;
     setLoading(true);
@@ -54,6 +57,7 @@ export default function AdminAnizenImport() {
     return () => clearTimeout(t);
   }, [search, fetchResults]);
 
+  // Imports a single Anizen anime into the site.
   const importSingle = async (item) => {
     const id = item.id || item._id;
     setImporting(id);
@@ -67,6 +71,7 @@ export default function AdminAnizenImport() {
     }
   };
 
+  // Imports all selected, not-yet-imported anime.
   const importSelected = async () => {
     const all = [...spotlight, ...results];
     const toImport = all.filter((r) => selectedIds.has(r.id || r._id) && !imported.has(r.id || r._id));
@@ -76,6 +81,7 @@ export default function AdminAnizenImport() {
     setSelectedIds(new Set());
   };
 
+  // Toggles an anime in the selection set.
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -84,6 +90,7 @@ export default function AdminAnizenImport() {
     });
   };
 
+  // Card component displaying an importable Anizen anime.
   const AnimeCard = ({ item }) => {
     const id = item.id || item._id;
     const isImported = imported.has(id);

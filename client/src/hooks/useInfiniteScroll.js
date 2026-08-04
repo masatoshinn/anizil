@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+// useInfiniteScroll: calls a callback when an IntersectionObserver sentinel scrolls into view
 export default function useInfiniteScroll(callback, options = {}) {
   const { threshold = 0.1, rootMargin = '100px' } = options;
   const [isLoading, setIsLoading] = useState(false);
   const observerRef = useRef(null);
   const sentinelRef = useRef(null);
 
+  // Triggers the load callback when the sentinel is visible and not already loading
   const handleIntersect = useCallback(
     async (entries) => {
       const [entry] = entries;

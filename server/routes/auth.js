@@ -100,6 +100,7 @@ router.get('/google/callback',
   }
 );
 
+// Register a new user with optional referral and verification email.
 router.post('/register', [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
@@ -223,6 +224,7 @@ router.post('/register', [
   }
 });
 
+// Authenticate a user and issue a JWT session cookie.
 router.post('/login', [
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required')
@@ -309,6 +311,7 @@ router.post('/login', [
   }
 });
 
+// Clear the session token cookie to log the user out.
 router.post('/logout', (req, res) => {
   res.cookie('token', '', {
     httpOnly: true,
@@ -396,6 +399,7 @@ router.post('/resend-verification', auth, async (req, res) => {
   }
 });
 
+// Return the current user's profile, badges, permissions, and stats.
 router.get('/me', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -464,6 +468,7 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// Send a password reset link to the provided email if it exists.
 router.post('/forgot-password', [
   body('email').isEmail().withMessage('Valid email is required')
 ], async (req, res) => {
@@ -513,6 +518,7 @@ router.post('/forgot-password', [
   }
 });
 
+// Reset the password using a valid, unexpired reset token.
 router.post('/reset-password', [
   body('token').notEmpty().withMessage('Reset token is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')

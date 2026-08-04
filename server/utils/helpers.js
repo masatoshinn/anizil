@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 
+// Convert arbitrary text into a URL-friendly slug
 function generateSlug(text) {
   return text
     .toString()
@@ -12,10 +13,12 @@ function generateSlug(text) {
     .replace(/-+$/, '');
 }
 
+// Generate a unique token from UUID plus timestamp
 function generateToken() {
   return uuidv4().replace(/-/g, '') + Date.now().toString(36);
 }
 
+// Generate a 12-character redeem code with dash separators
 function generateRedeemCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = '';
@@ -26,6 +29,7 @@ function generateRedeemCode() {
   return code;
 }
 
+// Clamp page and limit, returning computed SQL offset
 function paginate(page, limit) {
   const p = Math.max(1, parseInt(page) || 1);
   const l = Math.min(100, Math.max(1, parseInt(limit) || 20));
@@ -33,6 +37,7 @@ function paginate(page, limit) {
   return { page: p, limit: l, offset };
 }
 
+// Resolve a promise after the given milliseconds
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

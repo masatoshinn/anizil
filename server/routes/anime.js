@@ -9,15 +9,18 @@ const router = express.Router();
 
 // Simple in-memory cache for external API calls
 const apiCache = new Map();
+// Read a cached API entry if it is still within its TTL window.
 function getCached(key, ttlMs = 300000) {
   const entry = apiCache.get(key);
   if (entry && Date.now() - entry.ts < ttlMs) return entry.data;
   return null;
 }
+// Store data in the cache with the current timestamp.
 function setCache(key, data) {
   apiCache.set(key, { data, ts: Date.now() });
 }
 
+// List anime with optional filters, search, and sorting.
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();
@@ -98,6 +101,7 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Return featured anime (cached) sorted by rating.
 router.get('/featured', async (req, res) => {
   try {
     const cached = getCached('featured_db', 120000);
@@ -118,6 +122,7 @@ router.get('/featured', async (req, res) => {
   }
 });
 
+// Return ongoing anime with the most views, cached briefly.
 router.get('/trending', async (req, res) => {
   try {
     const cached = getCached('trending_db', 120000);
@@ -138,6 +143,7 @@ router.get('/trending', async (req, res) => {
   }
 });
 
+// Return recently updated anime with their latest episode dates.
 router.get('/recent', async (req, res) => {
   try {
     const pool = await getPool();
@@ -162,6 +168,7 @@ router.get('/recent', async (req, res) => {
   }
 });
 
+// Collect and sort a unique list of all anime genres.
 router.get('/genres', async (req, res) => {
   try {
     const pool = await getPool();
@@ -192,6 +199,7 @@ router.get('/genres', async (req, res) => {
   }
 });
 
+// Build a weekly broadcast schedule for ongoing anime.
 router.get('/schedule', async (req, res) => {
   try {
     const pool = await getPool();
@@ -219,6 +227,7 @@ router.get('/schedule', async (req, res) => {
   }
 });
 
+// Return anime detail with episodes, similar titles, and external fallback.
 router.get('/:slug', async (req, res) => {
   try {
     const pool = await getPool();
@@ -319,6 +328,7 @@ router.get('/:slug', async (req, res) => {
   }
 });
 
+// Return a paginated list of episodes for a given anime id.
 router.get('/:id/episodes', async (req, res) => {
   try {
     const pool = await getPool();

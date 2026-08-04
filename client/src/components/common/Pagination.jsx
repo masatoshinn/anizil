@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+// Builds the page number list, inserting ellipses for long ranges.
 function getPageNumbers(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
@@ -14,6 +15,7 @@ function getPageNumbers(current, total) {
   return pages;
 }
 
+// Renders prev/next and numbered pagination buttons.
 export default function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
 

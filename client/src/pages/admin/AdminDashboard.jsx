@@ -19,6 +19,7 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
+// Animates counting up to the target value for display.
 function AnimatedCounter({ value, duration = 1.5 }) {
   const [count, setCount] = useState(0);
 
@@ -50,12 +51,14 @@ const activityIcons = {
   default: Activity,
 };
 
+// Admin dashboard showing stats, activity feed, and quick actions.
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Fetches admin stats and recent activity in parallel.
     const fetchDashboard = async () => {
       try {
         const [statsRes, activityRes] = await Promise.allSettled([

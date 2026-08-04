@@ -13,6 +13,7 @@ router.use(auth, adminAuth);
 
 const ANIZEN_API_URL = process.env.ANIZEN_API_URL || 'https://api.zenime.me';
 
+// Fetch JSON from the Anizen API and throw on error responses.
 async function anizenFetch(path) {
   const response = await fetch(`${ANIZEN_API_URL}${path}`, {
     headers: { 'Accept': 'application/json' }

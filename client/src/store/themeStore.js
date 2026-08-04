@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import api from '../lib/api';
 
+// themeStore: zustand store managing light/dark theme and applying it to the document root
 const useThemeStore = create((set, get) => ({
   theme: 'dark',
   initialized: false,
 
+  // Applies the theme class to the document root and persists the choice
   applyTheme: (theme) => {
     const root = document.documentElement;
     if (theme === 'dark') root.classList.add('dark');
@@ -12,17 +14,20 @@ const useThemeStore = create((set, get) => ({
     try { localStorage.setItem('theme', theme); } catch {}
   },
 
+  // Sets the theme state and applies it
   setTheme: (theme) => {
     set({ theme });
     get().applyTheme(theme);
   },
 
+  // Toggles between the dark and light themes
   toggleTheme: () => {
     const next = get().theme === 'dark' ? 'light' : 'dark';
     get().setTheme(next);
   },
 
   // Initialize from saved preference -> admin default -> dark
+  // Initializes theme from saved preference, admin default, or dark
   initTheme: async () => {
     if (get().initialized) return;
     let theme = 'dark';

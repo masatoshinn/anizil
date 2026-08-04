@@ -14,10 +14,12 @@ const genreColors = {
   Thriller: 'bg-amber-500/15 text-amber-400',
 };
 
+// Returns Tailwind color classes for a genre name.
 function getColor(name) {
   return genreColors[name] || 'bg-primary/15 text-primary';
 }
 
+// Renders a genre pill; clickable when an onClick handler is provided.
 export default function GenreTag({ name, onClick }) {
   const classes = getColor(name);
 

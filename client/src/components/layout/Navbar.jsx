@@ -18,10 +18,12 @@ import {
   Bell,
   CheckCheck,
   Loader2,
+  PenLine,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useSettingsStore from '../../store/settingsStore';
 import api from '../../lib/api';
+import BadgeIcon from '../common/BadgeIcon';
 
 const baseLinks = [
   { label: 'Home', path: '/' },
@@ -33,6 +35,7 @@ const baseLinks = [
   { label: 'Leaderboard', path: '/leaderboard' },
 ];
 
+// Main fixed navbar with desktop links, search, and user menu.
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -59,6 +62,7 @@ export default function Navbar() {
     }
   }, [isLoggedIn]);
 
+  // Fetches the user's active shop frame for avatar styling.
   const loadActiveFrame = async () => {
     try {
       const res = await api.get('/shop/frames/my');
@@ -75,6 +79,7 @@ export default function Navbar() {
     }
   };
 
+  // Loads the current user's list of notifications.
   const loadNotifications = async () => {
     setNotifLoading(true);
     try {
@@ -86,6 +91,7 @@ export default function Navbar() {
     setNotifLoading(false);
   };
 
+  // Marks all notifications as read on the server and locally.
   const markAllRead = async () => {
     try {
       await api.put('/user/notifications/read');
@@ -105,6 +111,7 @@ export default function Navbar() {
     : [...baseLinks, { label: 'Premium', path: '/premium' }];
 
   const isAdmin = user && ['super_admin', 'content_admin', 'moderator'].includes(user.role);
+  const isCreator = isAdmin || user?.role === 'creator';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -130,6 +137,7 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
+  // Logs out the user and navigates back to the homepage.
   const handleLogout = () => {
     logout();
     setUserOpen(false);
@@ -137,6 +145,7 @@ export default function Navbar() {
     navigate('/');
   };
 
+  // Builds active/inactive styling classes for nav links.
   const linkClass = ({ isActive }) =>
     `relative text-sm font-medium transition-colors duration-200 ${
       isActive ? 'text-primary' : 'text-text-muted hover:text-text-primary'
@@ -282,7 +291,7 @@ export default function Navbar() {
                             className="text-[9px] leading-none drop-shadow-lg"
                             title={badge.name}
                           >
-                            {badge.icon}
+                            <BadgeIcon icon={badge.icon} />
                           </span>
                         ))}
                         {user.badges.length > 3 && (
@@ -292,7 +301,7 @@ export default function Navbar() {
                     )}
                     {user?.role && user.role !== 'user' && !user?.badges?.some(b => b.is_verified) && (
                       <span className="absolute -top-1 -right-1 text-[8px] leading-none">
-                        {user.role === 'super_admin' ? '👑' : user.role === 'content_admin' ? '📝' : '🛡️'}
+                        {user.role === 'super_admin' ? '👑' : user.role === 'content_admin' ? '📝' : user.role === 'creator' ? '✍️' : '🛡️'}
                       </span>
                     )}
                   </div>
@@ -327,7 +336,7 @@ export default function Navbar() {
                                 style={{ backgroundColor: `${badge.color}20`, color: badge.color }}
                                 title={badge.description || badge.name}
                               >
-                                {badge.icon} {badge.name}
+                                <BadgeIcon icon={badge.icon} className="mr-1" /> {badge.name}
                               </span>
                             ))}
                             {user.badges.length > 5 && (
@@ -368,6 +377,13 @@ export default function Navbar() {
                           label="History"
                           onClick={() => { navigate('/dashboard?tab=history'); setUserOpen(false); }}
                         />
+                        {isCreator && (
+                          <DropdownLink
+                            icon={<PenLine className="w-4 h-4 text-primary" />}
+                            label="Creator Dashboard"
+                            onClick={() => { navigate('/creator'); setUserOpen(false); }}
+                          />
+                        )}
                         {isAdmin && (
                           <DropdownLink
                             icon={<Crown className="w-4 h-4 text-warning" />}
@@ -471,6 +487,13 @@ export default function Navbar() {
                         label="My Profile"
                         onClick={() => { navigate('/dashboard?tab=profile'); setMobileOpen(false); }}
                       />
+                      {isCreator && (
+                        <DropdownLink
+                          icon={<PenLine className="w-4 h-4 text-primary" />}
+                          label="Creator Dashboard"
+                          onClick={() => { navigate('/creator'); setMobileOpen(false); }}
+                        />
+                      )}
                       {isAdmin && (
                         <DropdownLink
                           icon={<Crown className="w-4 h-4 text-warning" />}
@@ -514,6 +537,7 @@ export default function Navbar() {
   );
 }
 
+// Renders a single dropdown menu row with optional danger styling.
 function DropdownLink({ icon, label, onClick, danger }) {
   return (
     <button

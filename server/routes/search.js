@@ -7,6 +7,7 @@ const router = express.Router();
 // In-memory cache for external (Anikoto) search results
 const extCache = new Map();
 
+// Search local anime and merge in non-imported external Anikoto results.
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();

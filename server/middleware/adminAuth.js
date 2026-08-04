@@ -1,5 +1,6 @@
 const { getPool } = require('../config/database');
 
+// Verify admin/mod role and load role permissions
 const adminAuth = async (req, res, next) => {
   try {
     const pool = await getPool();
@@ -18,6 +19,7 @@ const adminAuth = async (req, res, next) => {
       super_admin: ['manage_users', 'manage_anime', 'manage_episodes', 'manage_settings', 'manage_roles', 'manage_comments', 'manage_reports', 'manage_tokens', 'manage_codes'],
       content_admin: ['manage_anime', 'manage_episodes', 'manage_comments', 'view_reports'],
       moderator: ['manage_comments', 'manage_reports', 'view_users'],
+      creator: ['create_manga'],
       user: []
     };
 
@@ -44,6 +46,7 @@ const adminAuth = async (req, res, next) => {
   }
 };
 
+// Return middleware guarding routes by required permission
 const requirePermission = (permission) => {
   return (req, res, next) => {
     if (req.userRole === 'super_admin') {

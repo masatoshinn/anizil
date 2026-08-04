@@ -14,10 +14,12 @@ const tabs = [
   { key: 'oauth', label: 'OAuth', icon: LogIn },
 ];
 
+// Persists website settings to the server.
 function saveSettings(data) {
   return api.put('/admin/settings', data);
 }
 
+// Admin page to edit general, theme, feature, and premium settings.
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(true);
@@ -43,6 +45,7 @@ export default function AdminSettings() {
   });
 
   useEffect(() => {
+    // Loads all site settings and populates each form.
     const fetchSettings = async () => {
       try {
         const res = await api.get('/admin/settings');
@@ -90,6 +93,7 @@ export default function AdminSettings() {
     fetchSettings();
   }, []);
 
+  // Saves the given settings section to the server.
   const saveSection = async (section, data) => {
     setSaving(true);
     try {

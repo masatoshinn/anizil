@@ -8,11 +8,13 @@ const ADMIN_ROLES = ['super_admin', 'content_admin', 'moderator'];
 const adminRoleCache = new Map(); // { id: { isAdmin, ts } }
 const ADMIN_ROLE_CACHE_TTL = 10 * 1000;
 
+// Check whether the current request user is an admin
 function isAdminUser(req) {
   return req.user && ADMIN_ROLES.includes(req.user.role);
 }
 
 // Detect whether the caller (by bearer/cookie token) is an admin/mod.
+// Resolve admin status from token, cached briefly to avoid DB hits
 async function hasAdminRole(req) {
   if (isAdminUser(req)) return true;
 

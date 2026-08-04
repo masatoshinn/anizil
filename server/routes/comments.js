@@ -23,6 +23,7 @@ function getOptionalUserId(req) {
   }
 }
 
+// Load reaction counts and the current user's reaction for a comment.
 async function attachReactions(pool, comment, currentUserId) {
   const [reactions] = await pool.query(
     'SELECT reaction, COUNT(*) as count FROM comment_reactions WHERE comment_id = ? GROUP BY reaction',
@@ -233,6 +234,7 @@ router.get('/:episodeId', async (req, res) => {
   }
 });
 
+// Create a comment on an anime or episode, awarding XP and achievements.
 router.post('/', auth, [
   body('content').trim().notEmpty().withMessage('Comment content is required'),
 ], async (req, res) => {
@@ -331,6 +333,7 @@ router.post('/', auth, [
   }
 });
 
+// Edit a comment's content if the current user authored it.
 router.put('/:id', auth, [
   body('content').trim().notEmpty().withMessage('Comment content is required')
 ], async (req, res) => {
@@ -390,6 +393,7 @@ router.put('/:id', auth, [
   }
 });
 
+// Delete a comment if owned by the user or an admin/moderator.
 router.delete('/:id', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -429,6 +433,7 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// Increment the like count on a comment.
 router.post('/:id/like', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -468,6 +473,7 @@ router.post('/:id/like', auth, async (req, res) => {
   }
 });
 
+// Toggle a user's emoji reaction on a comment.
 router.post('/:id/reaction', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -530,6 +536,7 @@ router.post('/:id/reaction', auth, async (req, res) => {
   }
 });
 
+// Report a comment once per user and flag it for moderation.
 router.post('/:id/report', auth, [
   body('reason').trim().notEmpty().withMessage('Reason is required')
 ], async (req, res) => {

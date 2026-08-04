@@ -5,8 +5,10 @@ import api from '../../lib/api';
 import { cn } from '../../lib/utils';
 import Modal from '../../components/common/Modal';
 import Skeleton from '../../components/common/Skeleton';
+import BadgeIcon from '../../components/common/BadgeIcon';
 import toast from 'react-hot-toast';
 
+// Admin page to create, edit, and delete badges.
 export default function AdminBadges() {
   const [badges, setBadges] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,7 @@ export default function AdminBadges() {
 
   useEffect(() => { loadBadges(); }, []);
 
+  // Fetches all badges from the server.
   const loadBadges = async () => {
     setLoading(true);
     try {
@@ -26,18 +29,21 @@ export default function AdminBadges() {
     setLoading(false);
   };
 
+  // Opens the create-badge modal with defaults.
   const openCreate = () => {
     setEditing(null);
     setForm({ name: '', icon: '⭐', color: '#0ea5e9', description: '', is_verified: false });
     setShowModal(true);
   };
 
+  // Opens the edit modal pre-filled with badge data.
   const openEdit = (badge) => {
     setEditing(badge);
     setForm({ name: badge.name, icon: badge.icon, color: badge.color, description: badge.description || '', is_verified: !!badge.is_verified });
     setShowModal(true);
   };
 
+  // Creates or updates a badge from the form.
   const handleSave = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.icon.trim()) { toast.error('Name and icon required'); return; }
@@ -56,6 +62,7 @@ export default function AdminBadges() {
     setSaving(false);
   };
 
+  // Deletes a badge after confirmation.
   const handleDelete = async (badge) => {
     if (!confirm(`Delete "${badge.name}" badge?`)) return;
     try {
@@ -93,7 +100,7 @@ export default function AdminBadges() {
               <div key={badge.id} className="flex items-center gap-4 p-4 hover:bg-[#334155]/30 transition-colors">
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
                   style={{ backgroundColor: `${badge.color}20` }}>
-                  {badge.icon}
+                  <BadgeIcon icon={badge.icon} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -129,10 +136,17 @@ export default function AdminBadges() {
         title={editing ? 'Edit Badge' : 'Create Badge'}>
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Badge Icon (emoji)</label>
-            <input type="text" value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })}
-              className="w-full px-4 py-2.5 bg-[#0f172a] border border-[rgba(148,163,184,0.12)] rounded-lg text-[#f8fafc] focus:outline-none focus:border-[#0ea5e9] transition-colors"
-              placeholder="⭐" maxLength={5} />
+            <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Badge Icon</label>
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
+                style={{ backgroundColor: `${form.color}20`, color: form.color }}>
+                <BadgeIcon icon={form.icon} />
+              </div>
+              <input type="text" value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                className="flex-1 px-4 py-2.5 bg-[#0f172a] border border-[rgba(148,163,184,0.12)] rounded-lg text-[#f8fafc] focus:outline-none focus:border-[#0ea5e9] transition-colors"
+                placeholder="fa-solid fa-crown or emoji" />
+            </div>
+            <p className="text-xs text-[#94a3b8] mt-1.5">FontAwesome icon name (e.g. <code className="text-[#0ea5e9]">fa-solid fa-crown</code>, <code className="text-[#0ea5e9]">fas fa-user</code>) renders the FA icon. Emoji also works.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Badge Name</label>

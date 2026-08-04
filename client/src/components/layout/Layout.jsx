@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import Navbar from './Navbar';
 import Footer from './Footer';
 
+// App shell wrapping pages with navbar, footer and toast host.
 export default function Layout() {
   return (
       <div className="min-h-screen flex flex-col bg-bg text-text-primary">

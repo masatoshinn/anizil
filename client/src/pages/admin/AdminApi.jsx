@@ -9,6 +9,7 @@ import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
 
+// Admin page to create, revoke, and copy API tokens.
 export default function AdminApi() {
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +24,7 @@ export default function AdminApi() {
     defaultValues: { name: '', scope: 'read' },
   });
 
+  // Fetches paginated API tokens for the admin.
   const fetchTokens = useCallback(async () => {
     setLoading(true);
     try {
@@ -38,6 +40,7 @@ export default function AdminApi() {
 
   useEffect(() => { fetchTokens(); }, [fetchTokens]);
 
+  // Creates a new API token for the current user.
   const createToken = async (data) => {
     setSaving(true);
     try {
@@ -52,6 +55,7 @@ export default function AdminApi() {
     }
   };
 
+  // Revokes an API token after confirmation.
   const deleteToken = async (id) => {
     if (!confirm('Revoke this API token?')) return;
     try {
@@ -62,6 +66,7 @@ export default function AdminApi() {
     }
   };
 
+  // Toggles visibility of a token in the list.
   const toggleReveal = (id) => {
     setRevealedTokens((prev) => {
       const next = new Set(prev);
@@ -70,6 +75,7 @@ export default function AdminApi() {
     });
   };
 
+  // Copies a token string to the clipboard.
   const copyToken = (token) => {
     navigator.clipboard.writeText(token);
   };

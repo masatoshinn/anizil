@@ -6,6 +6,7 @@ import api from '../../lib/api';
 import { cn } from '../../lib/utils';
 import Skeleton from '../../components/common/Skeleton';
 
+// Admin page to bulk import many Anikoto anime pages.
 export default function AdminAnikotoBulkImport() {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -29,10 +30,12 @@ export default function AdminAnikotoBulkImport() {
     if (logsRef.current) logsRef.current.scrollTop = 0;
   }, [logs]);
 
+  // Prepends a timestamped entry to the import log.
   const addLog = (text, type = 'info') => {
     setLogs((prev) => [{ text, time: new Date().toLocaleTimeString(), type }, ...prev].slice(0, 200));
   };
 
+  // Imports a given number of pages, logging each result.
   const startBulkImport = async (data) => {
     setRunning(true);
     setStopFlag(false);
@@ -83,11 +86,13 @@ export default function AdminAnikotoBulkImport() {
     setRunning(false);
   };
 
+  // Signals the running import to stop.
   const stopImport = () => {
     abortRef.current = true;
     setStopFlag(true);
   };
 
+  // Loads a single Anikoto page for manual browsing.
   const browsePageLoad = async (pageNum) => {
     setBrowseLoading(true);
     try {
@@ -102,6 +107,7 @@ export default function AdminAnikotoBulkImport() {
     }
   };
 
+  // Imports a single browsed anime item.
   const importBrowseItem = async (item) => {
     setImportingId(item.id || item._id);
     try {

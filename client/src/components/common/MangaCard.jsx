@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Star } from 'lucide-react';
 import { mangaImage } from '../../lib/utils';
 
+// Displays a manga card with poster, status and rating info.
 export default function MangaCard({ manga }) {
   const {
     title,

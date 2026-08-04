@@ -6,6 +6,7 @@ import { cn, mangaImage } from '../../lib/utils';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
 
+// Admin page to search and import manga from MangaDex.
 export default function AdminMangaImport() {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
@@ -23,6 +24,7 @@ export default function AdminMangaImport() {
       .catch(() => setApiOnline(false));
   }, []);
 
+  // Searches MangaDex for manga matching a query.
   const fetchResults = useCallback(async (query, p = 1) => {
     if (!query) return;
     setLoading(true);
@@ -44,6 +46,7 @@ export default function AdminMangaImport() {
     return () => clearTimeout(t);
   }, [search, fetchResults]);
 
+  // Imports a single MangaDex manga into the site.
   const importSingle = async (item) => {
     setImporting(item.id);
     try {

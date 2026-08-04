@@ -13,6 +13,7 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0
 });
 
+// Return the shared connection pool reference
 async function getPool() {
   return pool;
 }

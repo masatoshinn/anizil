@@ -22,6 +22,7 @@ const CATEGORY_COLORS = {
 const fadeIn = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.03 } } };
 
+// ForumPage: community forum with category tabs, thread list, thread creation, and replies
 export default function ForumPage() {
   const { user, isAuthenticated } = useAuthStore();
   const [threads, setThreads] = useState([]);
@@ -46,6 +47,7 @@ export default function ForumPage() {
     loadThreads();
   }, [activeCategory, page]);
 
+  // Loads the paginated thread list for the active category
   const loadThreads = async () => {
     setLoading(true);
     try {
@@ -58,6 +60,7 @@ export default function ForumPage() {
     setLoading(false);
   };
 
+  // Creates a new forum thread from the modal form
   const createThread = async (e) => {
     e.preventDefault();
     if (!newThread.title.trim() || !newThread.content.trim()) return;
@@ -71,6 +74,7 @@ export default function ForumPage() {
     setCreating(false);
   };
 
+  // Opens a thread and fetches its detail and replies
   const openThread = async (thread) => {
     setSelectedThread(thread);
     try {
@@ -80,6 +84,7 @@ export default function ForumPage() {
     } catch {}
   };
 
+  // Posts a reply to the selected thread and appends it to the list
   const submitReply = async (e) => {
     e.preventDefault();
     if (!replyText.trim() || !selectedThread) return;
@@ -92,6 +97,7 @@ export default function ForumPage() {
     setReplyLoading(false);
   };
 
+  // Likes a forum thread and increments its local like count
   const likeThread = async (threadId) => {
     try {
       await api.post(`/forum/threads/${threadId}/like`);

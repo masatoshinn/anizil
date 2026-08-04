@@ -5,6 +5,7 @@ import { Trophy, Crown, Loader2 } from 'lucide-react';
 import api from '../lib/api';
 import useSEO from '../hooks/useSEO';
 import Pagination from '../components/common/Pagination';
+import BadgeIcon from '../components/common/BadgeIcon';
 
 const MEDALS = [
   { color: 'text-[#ffd700]', bg: 'bg-[#ffd700]/15', border: 'border-[#ffd700]/40' },
@@ -18,6 +19,7 @@ const PERIODS = [
   { value: 'weekly', label: 'This Week' },
 ];
 
+// LeaderboardPage: top users ranked by XP with all-time, monthly, and weekly periods
 export default function LeaderboardPage() {
   useSEO({ title: 'Leaderboard', description: 'Top fans on Anizil ranked by XP and achievements. See who leads the community.' });
   const [users, setUsers] = useState([]);
@@ -26,6 +28,7 @@ export default function LeaderboardPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Fetches the leaderboard page for the selected period
   const fetchLeaderboard = useCallback(async (p = 1, per = period) => {
     setLoading(true);
     try {
@@ -124,7 +127,7 @@ export default function LeaderboardPage() {
                           {user.name}
                         </Link>
                         {user.badges && user.badges.slice(0, 3).map((b) => (
-                          <span key={b.id} className="text-sm" style={{ color: b.color }} title={b.name}>{b.icon}</span>
+                          <span key={b.id} className="text-sm" style={{ color: b.color }} title={b.name}><BadgeIcon icon={b.icon} /></span>
                         ))}
                       </div>
                       <div className="flex items-center gap-2 mt-1">

@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+// Return the current user's profile with activity stats.
 router.get('/profile', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -55,6 +56,7 @@ router.get('/profile', auth, async (req, res) => {
   }
 });
 
+// Update the current user's name, bio, or avatar.
 router.put('/profile', auth, [
   body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
   body('bio').optional().trim(),
@@ -120,6 +122,7 @@ router.put('/profile', auth, [
   }
 });
 
+// List the user's watchlist, optionally filtered by status.
 router.get('/watchlist', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -155,6 +158,7 @@ router.get('/watchlist', auth, async (req, res) => {
   }
 });
 
+// Add or update a watchlist entry and award achievement XP.
 router.post('/watchlist', auth, [
   body('animeId').isInt().withMessage('Anime ID is required'),
   body('status').optional().isIn(['watching', 'completed', 'plan_to_watch', 'on_hold', 'dropped']).withMessage('Invalid status')
@@ -239,6 +243,7 @@ router.post('/watchlist', auth, [
   }
 });
 
+// Remove an anime from the user's watchlist.
 router.delete('/watchlist/:animeId', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -269,6 +274,7 @@ router.delete('/watchlist/:animeId', auth, async (req, res) => {
   }
 });
 
+// Return the user's paginated watch history.
 router.get('/history', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -312,6 +318,7 @@ router.get('/history', auth, async (req, res) => {
   }
 });
 
+// Record watch progress, awarding XP and achievements.
 router.post('/history', auth, [
   body('animeId').isInt().withMessage('Anime ID is required'),
   body('episodeId').isInt().withMessage('Episode ID is required'),
@@ -399,6 +406,7 @@ router.post('/history', auth, [
   }
 });
 
+// Clear all of the user's watch history.
 router.delete('/history', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -417,6 +425,7 @@ router.delete('/history', auth, async (req, res) => {
   }
 });
 
+// Return achievements with unlock status and total XP.
 router.get('/achievements', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -452,6 +461,7 @@ router.get('/achievements', auth, async (req, res) => {
   }
 });
 
+// Return the user's latest notifications and unread count.
 router.get('/notifications', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -481,6 +491,7 @@ router.get('/notifications', auth, async (req, res) => {
   }
 });
 
+// Mark all of the user's notifications as read.
 router.put('/notifications/read', auth, async (req, res) => {
   try {
     const pool = await getPool();

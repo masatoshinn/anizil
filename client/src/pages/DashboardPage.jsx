@@ -15,6 +15,7 @@ import useThemeStore from '../store/themeStore';
 import AnimeCard from '../components/common/AnimeCard';
 import Modal from '../components/common/Modal';
 import Skeleton from '../components/common/Skeleton';
+import BadgeIcon from '../components/common/BadgeIcon';
 import api from '../lib/api';
 import { cn, formatDate, timeAgo, formatNumber } from '../lib/utils';
 
@@ -83,6 +84,7 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
+// DashboardPage: main user dashboard with tabs for home, list, history, premium, settings, profile, and achievements
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuthStore();
   const { premiumEnabled, fetched, fetchSettings } = useSettingsStore();
@@ -196,6 +198,7 @@ export default function DashboardPage() {
   );
 }
 
+// EmptyState: shared placeholder shown when a tab has no data
 function EmptyState({ icon: Icon, title, description, actionLabel, actionTo }) {
   return (
     <div className="text-center py-16">
@@ -212,6 +215,7 @@ function EmptyState({ icon: Icon, title, description, actionLabel, actionTo }) {
   );
 }
 
+// HomeTab: dashboard overview with continue-watching, recommendations, and recent activity
 function HomeTab({ profile, user, watchlist, history, trending }) {
   const continueWatching = (history || []).filter((h) => h.progress != null && h.progress < 100).slice(0, 6);
   const recentActivity = (history || []).slice(0, 8);
@@ -298,6 +302,7 @@ function HomeTab({ profile, user, watchlist, history, trending }) {
   );
 }
 
+// ContinueWatchingCard: compact card showing an in-progress anime with progress bar
 function ContinueWatchingCard({ entry }) {
   const anime = entry.anime || entry;
   const progress = entry.progress || 0;
@@ -323,6 +328,7 @@ function ContinueWatchingCard({ entry }) {
   );
 }
 
+// MyListTab: displays the user's watchlist with status filters and quick status changes
 function MyListTab({ watchlist, loadingWatchlist, addToWatchlist, removeFromWatchlist }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [statusDropdown, setStatusDropdown] = useState(null);
@@ -331,6 +337,7 @@ function MyListTab({ watchlist, loadingWatchlist, addToWatchlist, removeFromWatc
     ? watchlist || []
     : (watchlist || []).filter((item) => (item.status || item.watchStatus) === activeFilter);
 
+  // Updates the watch status for a given anime in the user's list
   const handleStatusChange = async (animeId, newStatus) => {
     await addToWatchlist(animeId, newStatus);
     setStatusDropdown(null);
@@ -411,6 +418,7 @@ function MyListTab({ watchlist, loadingWatchlist, addToWatchlist, removeFromWatc
   );
 }
 
+// HistoryTab: paginated watch history list with option to clear all history
 function HistoryTab({ history, loadingHistory, clearHistory }) {
   const [showClearModal, setShowClearModal] = useState(false);
   const [page, setPage] = useState(1);
@@ -422,6 +430,7 @@ function HistoryTab({ history, loadingHistory, clearHistory }) {
   const totalPages = Math.ceil(sortedHistory.length / perPage);
   const paginatedHistory = sortedHistory.slice((page - 1) * perPage, page * perPage);
 
+  // Clears the user's entire watch history after confirmation
   const handleClearHistory = async () => { await clearHistory(); setShowClearModal(false); };
 
   return (
@@ -506,6 +515,7 @@ function HistoryTab({ history, loadingHistory, clearHistory }) {
   );
 }
 
+// PremiumTab: shows premium status, XP balance, and available subscription plans
 function PremiumTab({ user, profile }) {
   const { premiumEnabled, fetched, fetchSettings } = useSettingsStore();
   useEffect(() => { if (!fetched) fetchSettings(); }, []);
@@ -633,6 +643,7 @@ function PremiumTab({ user, profile }) {
   );
 }
 
+// SettingsTab: profile editing, password change, and theme toggle forms
 function SettingsTab({ profile, user, fetchProfile }) {
   const [formData, setFormData] = useState({ name: '', avatar: '', bio: '', language: 'en' });
   const { theme, toggleTheme } = useThemeStore();
@@ -653,6 +664,7 @@ function SettingsTab({ profile, user, fetchProfile }) {
     }
   }, [profile]);
 
+  // Saves the user's updated profile settings
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -668,6 +680,7 @@ function SettingsTab({ profile, user, fetchProfile }) {
     setSaving(false);
   };
 
+  // Validates and submits a new password for the user
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (password.new !== password.confirm) {
@@ -691,6 +704,7 @@ function SettingsTab({ profile, user, fetchProfile }) {
     setPasswordSaving(false);
   };
 
+  // Toggles the site theme between dark and light
   const handleThemeToggle = () => {
     toggleTheme();
   };
@@ -809,6 +823,7 @@ function SettingsTab({ profile, user, fetchProfile }) {
   );
 }
 
+// ProfileTab: displays user stats, level, XP, badges, and profile frame management
 function ProfileTab({ profile, user, achievements, fetchProfile }) {
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({ name: '', avatar: '', bio: '', language: 'en' });
@@ -834,6 +849,7 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
     loadMyFrames();
   }, []);
 
+  // Loads the frames the user owns and the currently active frame
   const loadMyFrames = async () => {
     setLoadingFrames(true);
     try {
@@ -845,6 +861,7 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
     setLoadingFrames(false);
   };
 
+  // Activates a profile frame for the user's avatar
   const handleActivateFrame = async (frameId) => {
     setFrameMsg('');
     try {
@@ -857,6 +874,7 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
     }
   };
 
+  // Removes the active profile frame from the user's avatar
   const handleRemoveFrame = async () => {
     setFrameMsg('');
     try {
@@ -880,6 +898,7 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
   const xpProgress = (xpInLevel / 1000) * 100;
   const achievementsCount = achievements?.length || 0;
 
+  // Saves the user's edited profile information
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -995,7 +1014,7 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
                   <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-0.5 bg-[#0f172a]/80 px-1.5 py-0.5 rounded-full backdrop-blur-sm">
                     {user.badges.slice(0, 4).map((badge) => (
                       <span key={badge.id} className="text-[10px]" title={`${badge.name}${badge.description ? ': ' + badge.description : ''}`}>
-                        {badge.icon}
+                        <BadgeIcon icon={badge.icon} />
                       </span>
                     ))}
                     {user.badges.length > 4 && (
@@ -1009,16 +1028,17 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
                 <h3 className="text-xl font-bold text-[#f8fafc]">{profile?.name || user?.name || 'Anime Fan'}</h3>
                 {(() => {
                   const roleBadges = {
-                    super_admin: { label: 'Super Admin', color: 'bg-purple-500/15 text-purple-400 border-purple-500/30', icon: '👑' },
-                    content_admin: { label: 'Content Admin', color: 'bg-[#0ea5e9]/15 text-[#0ea5e9] border-[#0ea5e9]/30', icon: '📝' },
-                    moderator: { label: 'Moderator', color: 'bg-green-500/15 text-green-400 border-green-500/30', icon: '🛡️' },
+                    super_admin: { label: 'Super Admin', color: 'bg-purple-500/15 text-purple-400 border-purple-500/30', icon: 'fa-solid fa-crown' },
+                    content_admin: { label: 'Content Admin', color: 'bg-[#0ea5e9]/15 text-[#0ea5e9] border-[#0ea5e9]/30', icon: 'fa-solid fa-user-shield' },
+                    moderator: { label: 'Moderator', color: 'bg-green-500/15 text-green-400 border-green-500/30', icon: 'fa-solid fa-shield-halved' },
+                    creator: { label: 'Creator', color: 'bg-pink-500/15 text-pink-400 border-pink-500/30', icon: 'fa-solid fa-pen-nib' },
                   };
                   const role = user?.role || profile?.role;
                   const badge = roleBadges[role];
                   if (!badge) return null;
                   return (
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${badge.color}`}>
-                      {badge.icon} {badge.label}
+                      <BadgeIcon icon={badge.icon} /> {badge.label}
                     </span>
                   );
                 })()}
@@ -1145,6 +1165,7 @@ function ProfileTab({ profile, user, achievements, fetchProfile }) {
   );
 }
 
+// StatCard: reusable stat tile with icon, label, and value
 function StatCard({ icon: Icon, label, value, color }) {
   return (
     <div className="bg-[#1e293b] rounded-xl border border-[rgba(148,163,184,0.12)] p-4 text-center">
@@ -1155,6 +1176,7 @@ function StatCard({ icon: Icon, label, value, color }) {
   );
 }
 
+// AchievementsTab: shows all achievement definitions with earned status and progress
 function AchievementsTab({ achievements, loadingAchievements, history, watchlist }) {
   const totalEpisodes = (history || []).length;
   const totalList = (watchlist || []).length;
@@ -1162,6 +1184,7 @@ function AchievementsTab({ achievements, loadingAchievements, history, watchlist
 
   const earnedIds = new Set((achievements || []).map((a) => a.id || a.achievementId));
 
+  // Computes current progress toward a given achievement definition
   const computedProgress = (def) => {
     switch (def.id) {
       case 'first_watch': return Math.min(totalEpisodes, def.target);

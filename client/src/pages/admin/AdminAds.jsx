@@ -17,6 +17,7 @@ const defaultValues = {
   skipSeconds: 5,
 };
 
+// Admin page to configure HilltopAds and video ad settings.
 export default function AdminAds() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -31,6 +32,7 @@ export default function AdminAds() {
   const videoUrl = watch('videoUrl');
 
   useEffect(() => {
+    // Loads current ad settings and populates the form.
     const fetchSettings = async () => {
       try {
         const res = await api.get('/admin/settings/ads');
@@ -55,6 +57,7 @@ export default function AdminAds() {
     fetchSettings();
   }, [reset]);
 
+  // Saves the configured ad settings to the server.
   const onSave = async (data) => {
     setSaving(true);
     try {

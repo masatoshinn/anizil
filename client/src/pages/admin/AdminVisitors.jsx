@@ -3,6 +3,7 @@ import { Eye, Loader2, Users, MousePointerClick } from 'lucide-react';
 import api from '../../lib/api';
 import Pagination from '../../components/common/Pagination';
 
+// Admin page showing a paginated visitor activity log.
 export default function AdminVisitors() {
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,6 +11,7 @@ export default function AdminVisitors() {
   const [totalPages, setTotalPages] = useState(1);
   const [stats, setStats] = useState({ today: 0, total: 0 });
 
+  // Fetches visitor log entries and today's stats.
   const fetchVisitors = useCallback(async (p = 1) => {
     setLoading(true);
     try {

@@ -13,6 +13,7 @@ const defaultValues = {
   genres: '', year: '', status: 'ongoing', content_rating: '', demography: '', is_featured: false,
 };
 
+// Admin page to manage manga entries and chapters.
 export default function AdminManga() {
   const [mangaList, setMangaList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +31,7 @@ export default function AdminManga() {
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm({ defaultValues: emptyValues });
   const posterValue = watch('poster');
 
+  // Fetches paginated manga list with search and filters.
   const fetchManga = useCallback(async () => {
     setLoading(true);
     try {
@@ -51,6 +53,7 @@ export default function AdminManga() {
 
   const statuses = ['all', 'ongoing', 'completed', 'cancelled', 'hiatus'];
 
+  // Opens the edit modal pre-filled with manga data.
   const openEdit = (m) => {
     setEditingManga(m);
     reset({
@@ -70,6 +73,7 @@ export default function AdminManga() {
     setShowEditModal(true);
   };
 
+  // Updates the selected manga via the API.
   const onSubmit = async (data) => {
     if (!editingManga) return;
     setSaving(true);
@@ -95,6 +99,7 @@ export default function AdminManga() {
     }
   };
 
+  // Toggles the featured flag on a manga.
   const toggleFeatured = async (m) => {
     try {
       await api.patch(`/manga/${m.id}/featured`, { is_featured: !m.is_featured });
@@ -104,6 +109,7 @@ export default function AdminManga() {
     }
   };
 
+  // Triggers a chapter refresh from MangaDex.
   const handleRefresh = async (m) => {
     setRefreshing(m.id);
     try {
@@ -116,6 +122,7 @@ export default function AdminManga() {
     }
   };
 
+  // Deletes the selected manga after confirmation.
   const handleDelete = async () => {
     if (!deletingManga) return;
     try {

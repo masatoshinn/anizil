@@ -4,6 +4,7 @@ import api from '../lib/api';
 const CACHE_KEY = 'anizil_home_cache';
 const CACHE_TTL = 300000;
 
+// Reads a cached value from localStorage if it is still within the TTL
 function getCached(key) {
   try {
     const raw = localStorage.getItem(`${CACHE_KEY}_${key}`);
@@ -13,10 +14,12 @@ function getCached(key) {
     return data;
   } catch { return null; }
 }
+// Writes a value to localStorage with a timestamp for the cache
 function setCache(key, data) {
   try { localStorage.setItem(`${CACHE_KEY}_${key}`, JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
 
+// animeStore: zustand store for anime lists, current anime, episodes, and search
 const useAnimeStore = create((set, get) => ({
   animeList: [],
   featured: [],
@@ -39,6 +42,7 @@ const useAnimeStore = create((set, get) => ({
 
   error: null,
 
+  // Fetches a paginated anime list with the given filters
   fetchAnimeList: async (params = {}) => {
     set({ loadingAnimeList: true, error: null });
     try {
@@ -63,6 +67,7 @@ const useAnimeStore = create((set, get) => ({
     }
   },
 
+  // Fetches featured anime, using cache when available
   fetchFeatured: async () => {
     const cached = getCached('featured');
     if (cached) { set({ featured: cached, loadingFeatured: false }); return; }
@@ -79,6 +84,7 @@ const useAnimeStore = create((set, get) => ({
     }
   },
 
+  // Fetches trending anime, using cache when available
   fetchTrending: async () => {
     const cached = getCached('trending');
     if (cached) { set({ trending: cached, loadingTrending: false }); return; }
@@ -95,6 +101,7 @@ const useAnimeStore = create((set, get) => ({
     }
   },
 
+  // Fetches the list of anime genres
   fetchGenres: async () => {
     set({ loadingGenres: true, error: null });
     try {
@@ -108,6 +115,7 @@ const useAnimeStore = create((set, get) => ({
     }
   },
 
+  // Fetches a single anime by its slug
   fetchAnimeBySlug: async (slug) => {
     set({ loadingCurrentAnime: true, currentAnime: null, error: null });
     try {
@@ -120,6 +128,7 @@ const useAnimeStore = create((set, get) => ({
     }
   },
 
+  // Fetches the episode list for an anime id
   fetchEpisodes: async (animeId) => {
     if (!animeId) { set({ episodes: [] }); return; }
     set({ loadingEpisodes: true, episodes: [], error: null });
@@ -134,6 +143,7 @@ const useAnimeStore = create((set, get) => ({
     }
   },
 
+  // Searches anime by query and stores the results
   searchAnime: async (query) => {
     if (!query || query.trim().length === 0) {
       set({ searchResults: [] });
@@ -155,6 +165,7 @@ const useAnimeStore = create((set, get) => ({
   clearSearchResults: () => set({ searchResults: [] }),
   clearError: () => set({ error: null }),
 
+  // Fetches recently updated external anime, using per-page cache when available
   fetchExternalRecent: async (page = 1) => {
     const cacheKey = `recent_${page}`;
     const cached = getCached(cacheKey);

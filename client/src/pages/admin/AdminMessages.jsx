@@ -18,6 +18,7 @@ const STATUS_STYLES = {
   resolved: 'bg-[#22c55e]/15 text-[#22c55e]',
 };
 
+// Admin page to review and manage contact messages.
 export default function AdminMessages() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,7 @@ export default function AdminMessages() {
   const [statusFilter, setStatusFilter] = useState('');
   const [expanded, setExpanded] = useState(null);
 
+  // Fetches paginated messages filtered by status.
   const fetchMessages = useCallback(async (p = 1, status = statusFilter) => {
     setLoading(true);
     try {
@@ -47,6 +49,7 @@ export default function AdminMessages() {
     fetchMessages(1, statusFilter);
   }, [statusFilter, fetchMessages]);
 
+  // Updates a message's status via the API.
   const updateStatus = async (id, status) => {
     try {
       await api.put(`/admin/messages/${id}`, { status });
@@ -57,6 +60,7 @@ export default function AdminMessages() {
     }
   };
 
+  // Deletes a message after confirmation.
   const deleteMessage = async (id) => {
     if (!window.confirm('Delete this message?')) return;
     try {

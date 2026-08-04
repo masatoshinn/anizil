@@ -6,7 +6,9 @@ import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
 import { cn, formatDate } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import BadgeIcon from './BadgeIcon';
 
+// Manages star ratings, reviews, and the rating distribution UI.
 export default function RatingSection({ contentType = 'anime', contentId }) {
   const { user, isAuthenticated } = useAuthStore();
   const [aggregate, setAggregate] = useState({ avg: 0, count: 0 });
@@ -20,6 +22,7 @@ export default function RatingSection({ contentType = 'anime', contentId }) {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Fetches aggregate rating data and the user's own rating.
   const load = useCallback(async () => {
     if (!contentId) return;
     setLoading(true);
@@ -51,6 +54,7 @@ export default function RatingSection({ contentType = 'anime', contentId }) {
     load();
   }, [load]);
 
+  // Submits or updates the user's rating and optional review.
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isAuthenticated) return;
@@ -78,6 +82,7 @@ export default function RatingSection({ contentType = 'anime', contentId }) {
     setSubmitting(false);
   };
 
+  // Deletes the user's existing rating and review.
   const handleDelete = async () => {
     setDeleting(true);
     try {
@@ -93,6 +98,7 @@ export default function RatingSection({ contentType = 'anime', contentId }) {
     setDeleting(false);
   };
 
+  // Renders a row of five star icons at the given size.
   const renderStars = (value, size = 'w-4 h-4') => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
@@ -264,10 +270,10 @@ export default function RatingSection({ contentType = 'anime', contentId }) {
                       {review.user_name || 'Anonymous'}
                     </Link>
                     {review.badges && review.badges.length > 0 && (
-                      <div className="flex items-center gap-0.5">
+                      <div className="flex items-center gap-1.5 ml-1.5">
                         {review.badges.slice(0, 3).map((badge) => (
-                          <span key={badge.id} className="text-[11px]" title={badge.name}>
-                            {badge.icon}
+                          <span key={badge.id} className="text-[11px] leading-none cursor-default" style={{ color: badge.color }} title={badge.name}>
+                            <BadgeIcon icon={badge.icon} />
                           </span>
                         ))}
                       </div>

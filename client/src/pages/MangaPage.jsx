@@ -19,6 +19,7 @@ const SORTS = [
   { value: 'title', label: 'A-Z' },
 ];
 
+// MangaPage: browse and search manga with sort, genre filters, and pagination
 export default function MangaPage() {
   useSEO({ title: 'Manga & Light Novels', description: 'Read manga and light novels online for free. Browse the latest chapters, top rated series and more.' });
 
@@ -36,6 +37,7 @@ export default function MangaPage() {
     api.get('/manga/genres').then((res) => setGenres(res.data.data || [])).catch(() => {});
   }, []);
 
+  // Fetches a page of manga with the current sort, genre, and search filters
   const fetchManga = useCallback(async (p, opts = {}) => {
     setLoading(true);
     try {

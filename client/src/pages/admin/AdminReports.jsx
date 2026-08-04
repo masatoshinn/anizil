@@ -12,6 +12,7 @@ const statusStyles = {
   dismissed: 'bg-gray-500/20 text-gray-400',
 };
 
+// Admin page to review and resolve user reports.
 export default function AdminReports() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,7 @@ export default function AdminReports() {
   const [statusFilter, setStatusFilter] = useState('');
   const [acting, setActing] = useState(null);
 
+  // Fetches paginated reports with status filter.
   const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
@@ -37,6 +39,7 @@ export default function AdminReports() {
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
+  // Resolves or dismisses a single report.
   const actOnReport = async (id, action) => {
     setActing(id);
     try {

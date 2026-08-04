@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import api from '../lib/api';
 
+// Extracts the relevant payload array/object from a normalized API response
 function extractData(response) {
   const res = response.data;
   return res.data || res.watchlist || res.history || res.notifications || res.achievements || res.profile || res;
 }
 
+// userStore: zustand store for the user's profile, watchlist, history, notifications, and achievements
 const useUserStore = create((set) => ({
   profile: null,
   watchlist: [],
@@ -21,6 +23,7 @@ const useUserStore = create((set) => ({
 
   error: null,
 
+  // Fetches the current user's profile
   fetchProfile: async () => {
     set({ loadingProfile: true, error: null });
     try {
@@ -31,6 +34,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Fetches the user's watchlist
   fetchWatchlist: async () => {
     set({ loadingWatchlist: true, error: null });
     try {
@@ -41,6 +45,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Adds or updates an anime in the user's watchlist
   addToWatchlist: async (animeId, status = 'watching') => {
     try {
       const response = await api.post('/user/watchlist', { animeId, status });
@@ -50,6 +55,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Removes an anime from the user's watchlist
   removeFromWatchlist: async (animeId) => {
     try {
       await api.delete(`/user/watchlist/${animeId}`);
@@ -59,6 +65,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Fetches the user's watch history
   fetchHistory: async () => {
     set({ loadingHistory: true, error: null });
     try {
@@ -69,6 +76,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Records or updates watch history progress for an episode
   addToHistory: async (animeId, episodeId, progress = 0) => {
     try {
       await api.post('/user/history', { animeId, episodeId, progress });
@@ -78,6 +86,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Clears the user's entire watch history
   clearHistory: async () => {
     try {
       await api.delete('/user/history');
@@ -88,6 +97,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Fetches the user's notifications
   fetchNotifications: async () => {
     set({ loadingNotifications: true, error: null });
     try {
@@ -98,6 +108,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Marks all user notifications as read
   markNotificationsRead: async () => {
     try {
       await api.put('/user/notifications/read');
@@ -112,6 +123,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Fetches the user's achievements
   fetchAchievements: async () => {
     set({ loadingAchievements: true, error: null });
     try {
@@ -122,6 +134,7 @@ const useUserStore = create((set) => ({
     }
   },
 
+  // Clears the stored error state
   clearError: () => set({ error: null }),
 }));
 

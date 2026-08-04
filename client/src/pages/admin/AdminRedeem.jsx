@@ -7,6 +7,7 @@ import { cn, formatDate } from '../../lib/utils';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
 
+// Admin page to generate and manage redeem codes.
 export default function AdminRedeem() {
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +24,7 @@ export default function AdminRedeem() {
 
   const useCustomCode = watch('useCustomCode');
 
+  // Fetches paginated redeem codes and computes stats.
   const fetchCodes = useCallback(async () => {
     setLoading(true);
     try {
@@ -43,6 +45,7 @@ export default function AdminRedeem() {
 
   useEffect(() => { fetchCodes(); }, [fetchCodes]);
 
+  // Creates one or more redeem codes via the API.
   const generateCodes = async (data) => {
     setSaving(true);
     setError('');
@@ -64,6 +67,7 @@ export default function AdminRedeem() {
     }
   };
 
+  // Deletes a redeem code after confirmation.
   const deleteCode = async (id) => {
     if (!confirm('Delete this code?')) return;
     try {
@@ -74,6 +78,7 @@ export default function AdminRedeem() {
     }
   };
 
+  // Copies a redeem code to the clipboard.
   const copyCode = (code, id) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);

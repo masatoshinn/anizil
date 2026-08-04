@@ -561,6 +561,7 @@ const PREMIUM_XP_PLANS = {
   '90': 12000,
 };
 
+// Purchase premium days with XP if the plan is valid and affordable.
 router.post('/premium/purchase', auth, async (req, res) => {
   try {
     const pool = await getPool();

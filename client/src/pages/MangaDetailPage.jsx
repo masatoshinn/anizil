@@ -14,6 +14,7 @@ import { cn, formatNumber, getStatusColor, mangaImage } from '../lib/utils';
 
 const fadeIn = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
+// MangaDetailPage: renders a single manga's details, chapters, ratings, and similar manga
 export default function MangaDetailPage() {
   const { slug } = useParams();
   const [manga, setManga] = useState(null);
@@ -163,7 +164,30 @@ export default function MangaDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {chapters.map((ch, i) => (
+                  {chapters.map((ch, i) => ch.external_url ? (
+                    <a
+                      key={ch.id || ch.chapter_uuid || i}
+                      href={ch.external_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-4 p-3 rounded-lg border border-border-custom bg-panel hover:bg-panel-hover hover:border-[#0ea5e9]/50 transition-all"
+                    >
+                      <div className="w-9 h-9 rounded bg-bg flex items-center justify-center text-sm text-text-muted font-medium flex-shrink-0">
+                        <BookOpen className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-text-primary text-sm font-medium truncate">
+                          {ch.title || `Chapter ${ch.chapter_number || '?'}`}
+                        </p>
+                        {ch.scanlation_group && (
+                          <p className="text-xs text-text-muted truncate">{ch.scanlation_group}</p>
+                        )}
+                      </div>
+                      <span className="text-xs text-text-muted flex-shrink-0">
+                        {ch.chapter_number ? `Ch. ${ch.chapter_number}` : ''}
+                      </span>
+                    </a>
+                  ) : (
                     <Link
                       key={ch.id || ch.chapter_uuid || i}
                       to={`/manga/${manga.id}/read?chapter=${ch.chapter_uuid}`}
@@ -204,7 +228,8 @@ export default function MangaDetailPage() {
           >
             <motion.div variants={fadeIn} className="bg-panel border border-border-custom rounded-xl p-5 space-y-3 sticky top-24">
               <Link
-                to={chapters.length > 0 ? `/manga/${manga.id}/read?chapter=${chapters[chapters.length - 1].chapter_uuid}` : '#'}
+                to={chapters.length > 0 && !chapters[chapters.length - 1].external_url ? `/manga/${manga.id}/read?chapter=${chapters[chapters.length - 1].chapter_uuid}` : '#'}
+                onClick={chapters.length > 0 && chapters[chapters.length - 1].external_url ? () => window.open(chapters[chapters.length - 1].external_url, '_blank', 'noopener,noreferrer') : undefined}
                 className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-[#0ea5e9]/70 text-white py-3 rounded-lg font-semibold transition-all shadow-lg shadow-[#0ea5e9]/25"
               >
                 <BookOpen className="w-5 h-5" /> {chapters.length > 0 ? 'Read Latest' : 'Coming Soon'}

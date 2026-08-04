@@ -47,6 +47,7 @@ const FAQS = [
   },
 ];
 
+// FaqItem: single expandable accordion entry for one Q&A pair
 function FaqItem({ faq, index }) {
   const [open, setOpen] = useState(index === 0);
   return (
@@ -78,6 +79,7 @@ function FaqItem({ faq, index }) {
   );
 }
 
+// FaqPage: accordion-style frequently asked questions page
 export default function FaqPage() {
   useSEO({ title: 'FAQ', description: 'Frequently asked questions about Anizil - how to use the platform, features, and more.' });
   return (

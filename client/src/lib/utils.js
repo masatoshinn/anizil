@@ -1,3 +1,4 @@
+// Formats a date into a long US locale string
 export function formatDate(date) {
   if (!date) return '';
   const d = new Date(date);
@@ -8,6 +9,7 @@ export function formatDate(date) {
   });
 }
 
+// Formats a number with B/M/K suffixes for large values
 export function formatNumber(num) {
   if (num === null || num === undefined) return '0';
   if (num >= 1_000_000_000) {
@@ -22,6 +24,7 @@ export function formatNumber(num) {
   return num.toString();
 }
 
+// Returns a human-readable relative time string for a date
 export function timeAgo(date) {
   if (!date) return '';
   const now = new Date();
@@ -53,10 +56,12 @@ export function timeAgo(date) {
   return `${years} year${years !== 1 ? 's' : ''} ago`;
 }
 
+// Joins truthy class names into a single string
 export function cn(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
+// Truncates a string to the given length, appending an ellipsis
 export function truncate(str, len = 50) {
   if (!str) return '';
   if (str.length <= len) return str;
@@ -81,6 +86,7 @@ export function mangaImage(url) {
   return url;
 }
 
+// Maps an anime/manga status to Tailwind color classes for status badges
 export function getStatusColor(status) {
   const colors = {
     airing: 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -92,6 +98,7 @@ export function getStatusColor(status) {
   return colors[status?.toLowerCase()] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
 }
 
+// Returns a deterministic Tailwind color class for a genre name
 export function getGenreColor(genre) {
   const colors = [
     'bg-red-500/20 text-red-300',

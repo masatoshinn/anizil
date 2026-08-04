@@ -5,14 +5,17 @@ import { Calendar, MessageSquare, Bookmark, Trophy, CheckCircle, ListVideo, Chev
 import api from '../lib/api';
 import useSEO from '../hooks/useSEO';
 import useAuthStore from '../store/authStore';
+import BadgeIcon from '../components/common/BadgeIcon';
 
 const roleLabels = {
   super_admin: 'Super Admin',
   content_admin: 'Content Admin',
   moderator: 'Moderator',
+  creator: 'Creator',
   user: 'Member'
 };
 
+// UserProfilePage: public profile page showing user info, stats, watchlist, and recent comments
 export default function UserProfilePage() {
   const { id } = useParams();
   const currentUser = useAuthStore((s) => s.user);
@@ -29,6 +32,7 @@ export default function UserProfilePage() {
   });
 
   useEffect(() => {
+    // Fetches and loads the profile data for the requested user
     const fetchProfile = async () => {
       setLoading(true);
       setError('');
@@ -58,6 +62,7 @@ export default function UserProfilePage() {
     return () => { active = false; };
   }, [currentUser?.id, id]);
 
+  // Follows or unfollows the profile user depending on current state
   const handleFollow = useCallback(async () => {
     if (!currentUser) return;
     setFollowLoading(true);
@@ -78,6 +83,7 @@ export default function UserProfilePage() {
     }
   }, [currentUser, isFollowing, id]);
 
+  // Copies the user's referral code to the clipboard
   const handleCopyReferral = async () => {
     if (!currentUser?.referral_code) return;
     try {
@@ -140,7 +146,7 @@ export default function UserProfilePage() {
               {user.badges?.length > 0 && (
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-1 bg-[#0f172a] px-2 py-1 rounded-full border border-[rgba(148,163,184,0.12)]">
                   {user.badges.map((b) => (
-                    <span key={b.id} title={b.name} className="text-sm" style={{ color: b.color }}>{b.icon}</span>
+                    <span key={b.id} title={b.name} className="text-sm" style={{ color: b.color }}><BadgeIcon icon={b.icon} /></span>
                   ))}
                 </div>
               )}

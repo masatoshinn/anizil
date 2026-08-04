@@ -3,6 +3,7 @@ const { generateSlug } = require('./helpers');
 const MANGA_BASE = 'https://api.mangadex.org';
 const UA = { 'User-Agent': 'anizil/1.0 (anime + manga portal)' };
 
+// Fetch and parse a MangaDex API endpoint, throwing on errors
 async function mangaDexFetch(path) {
   const response = await fetch(`${MANGA_BASE}${path}`, { headers: UA });
   if (!response.ok) {
@@ -11,11 +12,13 @@ async function mangaDexFetch(path) {
   return response.json();
 }
 
+// Pick the best localized title or fall back to Unknown
 function extractTitle(manga) {
   const t = manga.attributes.title || {};
   return t.en || t['ja-ro'] || t['ja'] || t['ko'] || t['zh'] || Object.values(t)[0] || 'Unknown Title';
 }
 
+// Build the cover image URL from cover_art relationship
 function buildCoverUrl(manga) {
   const cover = (manga.relationships || []).find((r) => r.type === 'cover_art');
   if (cover && cover.attributes && cover.attributes.fileName) {
@@ -24,6 +27,7 @@ function buildCoverUrl(manga) {
   return null;
 }
 
+// Return the name from a related entity of the given type
 function getRelatedName(manga, type) {
   const rel = (manga.relationships || []).find((r) => r.type === type);
   return rel && rel.attributes ? (rel.attributes.name || null) : null;

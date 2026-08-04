@@ -10,6 +10,7 @@ import useAuthStore from '../store/authStore';
 import useSettingsStore from '../store/settingsStore';
 import Skeleton from '../components/common/Skeleton';
 import { cn, formatNumber } from '../lib/utils';
+import BadgeIcon from '../components/common/BadgeIcon';
 import api from '../lib/api';
 
 const fadeIn = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
@@ -32,6 +33,7 @@ const XP_METHODS = [
   { action: 'Daily login', xp: 20, icon: '📅' },
 ];
 
+// ShopPage: purchase XP packs, badges, frames, name colors, banners, and premium with XP
 export default function ShopPage() {
   const { user, isAuthenticated } = useAuthStore();
   const { premiumEnabled, fetched, fetchSettings } = useSettingsStore();
@@ -77,6 +79,7 @@ export default function ShopPage() {
     setLoading(false);
   }, [isAuthenticated]);
 
+  // Loads whether the user already claimed today's daily reward
   const loadDailyStatus = async () => {
     if (!isAuthenticated) return;
     try {
@@ -85,6 +88,7 @@ export default function ShopPage() {
     } catch {}
   };
 
+  // Claims the daily XP reward and updates the user's XP balance
   const handleDailyClaim = async () => {
     if (!isAuthenticated) {
       window.location.href = '/login';
@@ -107,6 +111,7 @@ export default function ShopPage() {
     setClaiming(false);
   };
 
+  // Loads available badges and the badges the user already owns
   const loadBadges = async () => {
     setBadgesLoading(true);
     try {
@@ -121,6 +126,7 @@ export default function ShopPage() {
     setBadgesLoading(false);
   };
 
+  // Loads available name colors and the user's owned/active colors
   const loadNameColors = async () => {
     try {
       const res = await api.get('/shop/name-colors');
@@ -137,6 +143,7 @@ export default function ShopPage() {
     }
   };
 
+  // Loads available banners and the user's owned/active banners
   const loadBanners = async () => {
     try {
       const res = await api.get('/shop/banners');
@@ -153,6 +160,7 @@ export default function ShopPage() {
     }
   };
 
+  // Loads available profile frames and the frames the user owns
   const loadFrames = async () => {
     try {
       const res = await api.get('/shop/frames');
@@ -169,6 +177,7 @@ export default function ShopPage() {
     }
   };
 
+  // Purchases an XP credit pack for the user
   const handlePurchase = async (packId) => {
     if (!isAuthenticated) {
       window.location.href = '/login';
@@ -187,6 +196,7 @@ export default function ShopPage() {
     setPurchasing(null);
   };
 
+  // Purchases a profile frame and adds it to the user's owned frames
   const handleFramePurchase = async (frame) => {
     if (!isAuthenticated) {
       window.location.href = '/login';
@@ -209,6 +219,7 @@ export default function ShopPage() {
     setBuyingFrame(null);
   };
 
+  // Purchases a name color and sets it as the active color
   const handleColorPurchase = async (color) => {
     if (!isAuthenticated) {
       window.location.href = '/login';
@@ -232,6 +243,7 @@ export default function ShopPage() {
     setBuyingColor(null);
   };
 
+  // Activates or deactivates a name color for the user
   const handleColorActivate = async (color) => {
     if (!isAuthenticated) return;
     try {
@@ -247,6 +259,7 @@ export default function ShopPage() {
     }
   };
 
+  // Purchases a profile banner and sets it as the active banner
   const handleBannerPurchase = async (banner) => {
     if (!isAuthenticated) {
       window.location.href = '/login';
@@ -270,6 +283,7 @@ export default function ShopPage() {
     setBuyingBanner(null);
   };
 
+  // Activates or deactivates a profile banner for the user
   const handleBannerActivate = async (banner) => {
     if (!isAuthenticated) return;
     try {
@@ -285,6 +299,7 @@ export default function ShopPage() {
     }
   };
 
+  // Purchases a badge for the user with XP
   const handleBadgePurchase = async (badge) => {
     if (!isAuthenticated) {
       window.location.href = '/login';
@@ -307,6 +322,7 @@ export default function ShopPage() {
     setBuyingBadge(null);
   };
 
+  // Purchases premium days using the user's XP balance
   const handlePremiumPurchase = async (plan) => {
     if (!isAuthenticated) {
       window.location.href = '/login';
@@ -429,7 +445,7 @@ export default function ShopPage() {
                   className="bg-[#1e293b] border border-[rgba(148,163,184,0.12)] rounded-xl p-4 text-center hover:scale-[1.02] transition-all">
                   <div className="w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center text-2xl"
                     style={{ backgroundColor: `${badge.color}20` }}>
-                    {badge.icon}
+                    <BadgeIcon icon={badge.icon} />
                   </div>
                   <h3 className="text-sm font-bold text-[#f8fafc] mb-1">{badge.name}</h3>
                   {badge.description && (

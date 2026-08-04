@@ -6,6 +6,7 @@ import useAuthStore from '../store/authStore';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
 
+// RedeemPage: form to redeem codes for XP, premium days, and other rewards
 export default function RedeemPage() {
   const { isAuthenticated } = useAuthStore();
   const [code, setCode] = useState('');
@@ -13,6 +14,7 @@ export default function RedeemPage() {
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Submits a redeem code and shows the reward message
   const handleRedeem = async (e) => {
     e.preventDefault();
     if (!code.trim() || !isAuthenticated) return;

@@ -13,6 +13,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 const fadeIn = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 
+// SchedulePage: weekly anime airing schedule organized by day of the week
 export default function SchedulePage() {
   useSEO({ title: 'Schedule', description: 'Weekly anime release schedule - see which episodes air today and every day of the week.' });
   const today = new Date().getDay();
@@ -25,6 +26,7 @@ export default function SchedulePage() {
     loadSchedule();
   }, []);
 
+  // Fetches the weekly schedule data from the API
   const loadSchedule = async () => {
     setLoading(true);
     try {

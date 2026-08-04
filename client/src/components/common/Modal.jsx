@@ -9,6 +9,7 @@ const sizeClasses = {
   xl: 'max-w-xl',
 };
 
+// Modal overlay locking scroll and closing on Escape key.
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   useEffect(() => {
     if (isOpen) {

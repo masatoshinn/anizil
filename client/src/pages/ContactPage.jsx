@@ -12,6 +12,7 @@ const CATEGORIES = [
   { value: 'copyright', label: 'Copyright / DMCA' },
 ];
 
+// ContactPage: contact form for questions, suggestions, bug reports, and copyright requests
 export default function ContactPage() {
   useSEO({ title: 'Contact', description: 'Contact the Anizil team for questions, suggestions, bug reports or copyright takedowns.' });
   const [name, setName] = useState('');
@@ -23,6 +24,7 @@ export default function ContactPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
 
+  // Validates the contact form fields and returns an error message if invalid
   const validate = () => {
     if (!name.trim()) return 'Name is required';
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) return 'Enter a valid email';
@@ -30,6 +32,7 @@ export default function ContactPage() {
     return '';
   };
 
+  // Sends the contact message after validation and shows a success state
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');

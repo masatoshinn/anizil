@@ -12,6 +12,7 @@ import useSEO from '../hooks/useSEO';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
+// WatchPage: streams an anime episode with server selection, ads, and premium gating
 export default function WatchPage() {
   const { animeSlug, episodeNumber } = useParams();
   const navigate = useNavigate();
@@ -69,6 +70,7 @@ export default function WatchPage() {
     }
   }, [currentAnime?.id]);
 
+  // Checks whether the user already has access to this premium anime
   const checkPremiumAccess = async () => {
     if (!isAuthenticated) {
       setHasPremiumAccess(false);
@@ -82,6 +84,7 @@ export default function WatchPage() {
     }
   };
 
+  // Unlocks premium anime access for the user in exchange for XP
   const handlePurchaseAnime = async () => {
     setPurchasingAnime(true);
     try {
@@ -110,6 +113,7 @@ export default function WatchPage() {
     }
   }, [currentAnime?.id, epNum]);
 
+  // Loads the streaming sources for the current episode
   const loadEpisodeSource = async () => {
     try {
       const ep = episodes.find(e => (e.episode_number || e.number) === epNum);
@@ -161,6 +165,7 @@ export default function WatchPage() {
     }
   };
 
+  // Records the user's watch progress for the current episode
   const saveWatchProgress = async () => {
     try {
       const ep = episodes.find(e => (e.episode_number || e.number) === epNum);
@@ -174,16 +179,19 @@ export default function WatchPage() {
     } catch {}
   };
 
+  // Navigates to the next episode
   const goNext = () => {
     navigate(`/watch/${animeSlug}/${epNum + 1}`);
   };
 
+  // Navigates to the previous episode if available
   const goPrev = () => {
     if (epNum > 1) {
       navigate(`/watch/${animeSlug}/${epNum - 1}`);
     }
   };
 
+  // Requests fullscreen mode on the embedded video player
   const toggleFullscreen = () => {
     const iframe = document.querySelector('iframe');
     if (iframe?.requestFullscreen) iframe.requestFullscreen();

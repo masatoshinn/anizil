@@ -28,6 +28,7 @@ const YEARS = Array.from({ length: 15 }, (_, i) => 2026 - i);
 
 const fadeIn = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 
+// SearchPage: debounced anime search with genre/status/year filters, history, and sorting
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { searchResults, loadingSearch, searchAnime } = useAnimeStore();
@@ -69,6 +70,7 @@ export default function SearchPage() {
     }
   }, [searchParams]);
 
+  // Loads the user's recent search history from localStorage
   const loadHistory = () => {
     try {
       const stored = localStorage.getItem(HISTORY_KEY);
@@ -76,6 +78,7 @@ export default function SearchPage() {
     } catch {}
   };
 
+  // Adds a search term to history, deduped and capped in localStorage
   const saveToHistory = (term) => {
     setSearchHistory((prev) => {
       const updated = [term, ...prev.filter((h) => h !== term)].slice(0, MAX_HISTORY);
@@ -84,17 +87,20 @@ export default function SearchPage() {
     });
   };
 
+  // Clears all saved search history from localStorage and state
   const clearHistory = () => {
     setSearchHistory([]);
     localStorage.removeItem(HISTORY_KEY);
   };
 
+  // Toggles a genre in the selected genre filter list
   const toggleGenre = (genre) => {
     setSelectedGenres((prev) =>
       prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
     );
   };
 
+  // Resets all search filters back to their defaults
   const clearFilters = () => {
     setSelectedGenres([]);
     setSelectedStatus('');

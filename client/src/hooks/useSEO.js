@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 const SITE_NAME = 'Anizil';
 
+// Upserts a meta tag (by attr/key) in the document head
 function setMeta(attr, key, value) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`);
   if (!el) {
@@ -12,6 +13,7 @@ function setMeta(attr, key, value) {
   el.setAttribute('content', value);
 }
 
+// useSEO: syncs the document title and meta tags (description, OG, Twitter) for a page
 export default function useSEO({ title, description, image, type = 'website' } = {}) {
   useEffect(() => {
     const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} - Anime Streaming Portal`;

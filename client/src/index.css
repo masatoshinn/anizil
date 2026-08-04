@@ -222,6 +222,11 @@
     color: var(--danger);
   }
 
+  .badge-info {
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    color: var(--primary);
+  }
+
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;

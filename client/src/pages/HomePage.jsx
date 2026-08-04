@@ -22,6 +22,7 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
+// HomePage: shows featured, trending, recent, and genre browse sections for the homepage
 export default function HomePage() {
   useSEO({
     title: 'Home',
@@ -124,6 +125,7 @@ export default function HomePage() {
     }
   }, [featured.length]);
 
+  // Fetches and appends the next page of recently-updated anime
   const handleLoadMore = async () => {
     setLoadingMore(true);
     try {
@@ -142,12 +144,14 @@ export default function HomePage() {
     setLoadingMore(false);
   };
 
+  // Scrolls the trending carousel left or right
   const scrollTrending = (dir) => {
     if (trendingRef.current) {
       trendingRef.current.scrollBy({ left: dir * 400, behavior: 'smooth' });
     }
   };
 
+  // Imports an external anime into the local database
   const handleImport = async (anime) => {
     const id = anime.anikoto_id || anime.id;
     setImportingId(id);

@@ -3,6 +3,7 @@ const { getPool } = require('../config/database');
 
 const router = express.Router();
 
+// Return episode detail with active sources and prev/next episode links.
 router.get('/:id', async (req, res) => {
   try {
     const pool = await getPool();

@@ -52,6 +52,7 @@ const sidebarItems = [
   { icon: Plug, label: 'API Management', path: '/admin/api', permission: 'manage_tokens' },
 ];
 
+// Admin shell with collapsible sidebar, top bar, and main content.
 export default function AdminLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -68,6 +69,7 @@ export default function AdminLayout({ children }) {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
+  // Checks whether a user can access the given permission.
   const hasPermission = (permission) => {
     if (!permission) return true;
     if (user?.role === 'super_admin') return true;

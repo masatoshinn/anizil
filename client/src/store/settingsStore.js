@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../lib/api';
 
+// settingsStore: zustand store holding site settings (premium, ads, free episodes)
 const useSettingsStore = create((set) => ({
   premiumEnabled: true,
   adsEnabled: false,
@@ -12,6 +13,7 @@ const useSettingsStore = create((set) => ({
   loading: false,
   fetched: false,
 
+  // Fetches premium/ad settings and ad video/VAST config from the admin settings endpoints
   fetchSettings: async () => {
     set({ loading: true });
     try {

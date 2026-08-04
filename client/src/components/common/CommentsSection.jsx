@@ -5,9 +5,11 @@ import { Send, MessageSquare, ThumbsUp, Flag, Reply, Loader2, CheckCircle } from
 import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
+import BadgeIcon from './BadgeIcon';
 
 const REACTIONS = ['👍', '❤️', '😂', '😢', '🔥'];
 
+// Manages comments, replies, likes, reactions and reports for an anime.
 export default function CommentsSection({ animeId, episodeId }) {
   const { user, isAuthenticated } = useAuthStore();
   const [comments, setComments] = useState([]);
@@ -17,6 +19,7 @@ export default function CommentsSection({ animeId, episodeId }) {
   const [replyTo, setReplyTo] = useState(null);
   const [replyContent, setReplyContent] = useState({});
 
+  // Fetches comments for the given anime or episode from the API.
   const fetchComments = useCallback(async () => {
     setLoading(true);
     try {
@@ -37,6 +40,7 @@ export default function CommentsSection({ animeId, episodeId }) {
     fetchComments();
   }, [fetchComments]);
 
+  // Submits a new top-level comment.
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!content.trim()) return;
@@ -56,6 +60,7 @@ export default function CommentsSection({ animeId, episodeId }) {
     setPosting(false);
   };
 
+  // Posts a reply to a specific parent comment.
   const handleReply = async (parentId) => {
     const text = (replyContent[parentId] || '').trim();
     if (!text) return;
@@ -75,6 +80,7 @@ export default function CommentsSection({ animeId, episodeId }) {
     }
   };
 
+  // Toggles a like on the given comment.
   const handleLike = async (id) => {
     try {
       await api.post(`/comments/${id}/like`);
@@ -84,6 +90,7 @@ export default function CommentsSection({ animeId, episodeId }) {
     }
   };
 
+  // Applies an emoji reaction and optimistically updates the comment.
   const handleReaction = async (commentId, emoji) => {
     if (!isAuthenticated) {
       toast.error('Login to react');
@@ -100,6 +107,7 @@ export default function CommentsSection({ animeId, episodeId }) {
     }
   };
 
+  // Prompts for a reason and submits a comment report.
   const handleReport = async (id) => {
     const reason = window.prompt('Reason for reporting this comment:');
     if (!reason) return;
@@ -111,6 +119,7 @@ export default function CommentsSection({ animeId, episodeId }) {
     }
   };
 
+  // Builds CSS style for colored or gradient user names.
   const nameStyle = (color) => {
     if (!color) return undefined;
     if (color.startsWith('linear-gradient')) {
@@ -119,6 +128,7 @@ export default function CommentsSection({ animeId, episodeId }) {
     return { color };
   };
 
+  // Renders a commenter's avatar with configured frame styling.
   const Avatar = ({ comment }) => (
     <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-[rgba(148,163,184,0.2)]"
       style={{ borderColor: comment.frame_color || '#0ea5e9', borderWidth: comment.frame_image ? 2 : 1 }}>
@@ -218,14 +228,23 @@ export default function CommentsSection({ animeId, episodeId }) {
                         {comment.user_name || 'Anonymous'}
                       </span>
                     )}
-                    {comment.badges && comment.badges.slice(0, 3).map((badge) =>
-                      badge.is_verified ? (
-                        <span key={badge.id} className="inline-flex items-center justify-center w-4 h-4 rounded-full" style={{ backgroundColor: badge.color }} title={badge.name}>
-                          <CheckCircle className="w-3 h-3 text-white" />
-                        </span>
-                      ) : (
-                        <span key={badge.id} className="text-sm" style={{ color: badge.color }} title={badge.name}>{badge.icon}</span>
-                      )
+                    {comment.badges && comment.badges.length > 0 && (
+                      <span className="inline-flex items-center gap-1.5 ml-1.5">
+                        {comment.badges.slice(0, 3).map((badge) =>
+                          badge.is_verified ? (
+                            <span key={badge.id} className="inline-flex items-center justify-center w-4 h-4 rounded-full cursor-default" style={{ backgroundColor: badge.color }} title={badge.name}>
+                              <CheckCircle className="w-3 h-3 text-white" />
+                            </span>
+                          ) : (
+                            <span key={badge.id} className="text-sm leading-none cursor-default" style={{ color: badge.color }} title={badge.name}>
+                              <BadgeIcon icon={badge.icon} />
+                            </span>
+                          )
+                        )}
+                        {comment.badges.length > 3 && (
+                          <span className="text-[10px] text-text-muted">+{comment.badges.length - 3}</span>
+                        )}
+                      </span>
                     )}
                     <span className="text-xs text-text-muted">{new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   </div>
@@ -306,14 +325,23 @@ export default function CommentsSection({ animeId, episodeId }) {
                                   {reply.user_name || 'Anonymous'}
                                 </span>
                               )}
-                              {reply.badges && reply.badges.slice(0, 2).map((badge) =>
-                                badge.is_verified ? (
-                                  <span key={badge.id} className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full" style={{ backgroundColor: badge.color }} title={badge.name}>
-                                    <CheckCircle className="w-2.5 h-2.5 text-white" />
-                                  </span>
-                                ) : (
-                                  <span key={badge.id} className="text-xs" style={{ color: badge.color }} title={badge.name}>{badge.icon}</span>
-                                )
+                              {reply.badges && reply.badges.length > 0 && (
+                                <span className="inline-flex items-center gap-1.5 ml-1.5">
+                                  {reply.badges.slice(0, 2).map((badge) =>
+                                    badge.is_verified ? (
+                                      <span key={badge.id} className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full cursor-default" style={{ backgroundColor: badge.color }} title={badge.name}>
+                                        <CheckCircle className="w-2.5 h-2.5 text-white" />
+                                      </span>
+                                    ) : (
+                                      <span key={badge.id} className="text-xs leading-none cursor-default" style={{ color: badge.color }} title={badge.name}>
+                                        <BadgeIcon icon={badge.icon} />
+                                      </span>
+                                    )
+                                  )}
+                                  {reply.badges.length > 2 && (
+                                    <span className="text-[10px] text-text-muted">+{reply.badges.length - 2}</span>
+                                  )}
+                                </span>
                               )}
                             </div>
                             <p className="text-text-primary text-sm">{reply.content}</p>

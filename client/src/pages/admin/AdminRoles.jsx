@@ -26,6 +26,7 @@ const roleIcons = {
   user: 'User',
 };
 
+// Admin page to create and edit user roles with permissions.
 export default function AdminRoles() {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +41,7 @@ export default function AdminRoles() {
   const iconName = watch('icon');
   const selectedPerms = watch('permissions');
 
+  // Fetches the list of all user roles.
   const fetchRoles = async () => {
     setLoading(true);
     try {
@@ -54,12 +56,14 @@ export default function AdminRoles() {
 
   useEffect(() => { fetchRoles(); }, []);
 
+  // Opens the create-role modal with empty form.
   const openAddModal = () => {
     setEditingRole(null);
     reset({ name: '', icon: 'Shield', permissions: [] });
     setShowModal(true);
   };
 
+  // Opens the edit-role modal pre-filled with role data.
   const openEditModal = (role) => {
     setEditingRole(role);
     reset({
@@ -70,12 +74,14 @@ export default function AdminRoles() {
     setShowModal(true);
   };
 
+  // Toggles a permission on the current role form.
   const togglePermission = (key) => {
     const current = selectedPerms || [];
     const next = current.includes(key) ? current.filter((p) => p !== key) : [...current, key];
     setValue('permissions', next, { shouldValidate: true });
   };
 
+  // Saves the role via the admin API.
   const onSubmit = async (data) => {
     setSaving(true);
     try {

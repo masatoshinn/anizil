@@ -6,6 +6,7 @@ const { paginate } = require('../utils/helpers');
 
 const router = express.Router();
 
+// List forum posts with category filter and sorting.
 router.get('/posts', async (req, res) => {
   try {
     const pool = await getPool();
@@ -62,6 +63,7 @@ router.get('/posts', async (req, res) => {
   }
 });
 
+// Return a single forum post with replies and increment views.
 router.get('/posts/:id', async (req, res) => {
   try {
     const pool = await getPool();
@@ -110,6 +112,7 @@ router.get('/posts/:id', async (req, res) => {
   }
 });
 
+// Create a forum post if the forum is enabled.
 router.post('/posts', auth, [
   body('title').trim().notEmpty().withMessage('Title is required'),
   body('content').trim().notEmpty().withMessage('Content is required'),
@@ -171,6 +174,7 @@ router.post('/posts', auth, [
   }
 });
 
+// Add a reply to a post, notifying the author.
 router.post('/posts/:id/reply', auth, [
   body('content').trim().notEmpty().withMessage('Content is required')
 ], async (req, res) => {
@@ -239,6 +243,7 @@ router.post('/posts/:id/reply', auth, [
   }
 });
 
+// Increment the like count on a forum post.
 router.post('/posts/:id/like', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -271,6 +276,7 @@ router.post('/posts/:id/like', auth, async (req, res) => {
   }
 });
 
+// Edit a forum post if owned by user or admin.
 router.put('/posts/:id', auth, [
   body('title').optional().trim().notEmpty().withMessage('Title cannot be empty'),
   body('content').optional().trim().notEmpty().withMessage('Content cannot be empty'),
@@ -327,6 +333,7 @@ router.put('/posts/:id', auth, [
   }
 });
 
+// Delete a forum post and its replies if authorized.
 router.delete('/posts/:id', auth, async (req, res) => {
   try {
     const pool = await getPool();
@@ -352,6 +359,7 @@ router.delete('/posts/:id', auth, async (req, res) => {
   }
 });
 
+// Edit a reply if owned by user or admin.
 router.put('/replies/:id', auth, [
   body('content').trim().notEmpty().withMessage('Content is required')
 ], async (req, res) => {
@@ -390,6 +398,7 @@ router.put('/replies/:id', auth, [
   }
 });
 
+// Delete a reply if owned by user or admin.
 router.delete('/replies/:id', auth, async (req, res) => {
   try {
     const pool = await getPool();

@@ -189,6 +189,7 @@ const sections = [
   },
 ];
 
+// MethodBadge: colored pill showing the HTTP method of an endpoint
 function MethodBadge({ method }) {
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-bold border ${METHOD_COLORS[method]} min-w-[60px] text-center`}>
@@ -197,6 +198,7 @@ function MethodBadge({ method }) {
   );
 }
 
+// AuthBadge: pill showing an endpoint's auth requirement, hidden when none required
 function AuthBadge({ auth }) {
   if (auth === 'None') return null;
   const is_admin = auth.includes('Admin') || auth.includes('manage');
@@ -207,10 +209,12 @@ function AuthBadge({ auth }) {
   );
 }
 
+// EndpointCard: expandable card describing a single API endpoint
 function EndpointCard({ ep, index }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Copies the endpoint path to the clipboard
   const copyPath = () => {
     navigator.clipboard.writeText(ep.path);
     setCopied(true);
@@ -288,6 +292,7 @@ function EndpointCard({ ep, index }) {
   );
 }
 
+// ApiDocsPage: interactive API documentation with search, collapsible sections, and endpoint details
 export default function ApiDocsPage() {
   const [search, setSearch] = useState('');
   const [activeSection, setActiveSection] = useState(null);

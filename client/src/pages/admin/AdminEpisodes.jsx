@@ -11,6 +11,7 @@ import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
 
+// Admin page to manage episodes and their video sources.
 export default function AdminEpisodes() {
   const [animeSearch, setAnimeSearch] = useState('');
   const [animeResults, setAnimeResults] = useState([]);
@@ -28,6 +29,7 @@ export default function AdminEpisodes() {
   const sourceForm = useForm({ defaultValues: { language: 'sub', server: 'MegaPlay', url: '', embed_link: '', type: 'embed' } });
   const bulkForm = useForm({ defaultValues: { anilistId: '', count: '' } });
 
+  // Debounced search for anime to attach episodes to.
   const searchAnime = useCallback(async (query) => {
     if (!query || query.length < 2) { setAnimeResults([]); return; }
     setSearchingAnime(true);
@@ -47,6 +49,7 @@ export default function AdminEpisodes() {
     return () => clearTimeout(t);
   }, [animeSearch, searchAnime]);
 
+  // Loads episodes for the selected anime.
   const selectAnime = async (anime) => {
     const animeId = anime.id || anime._id;
     const animeWithId = { ...anime, id: animeId };
@@ -66,6 +69,7 @@ export default function AdminEpisodes() {
     }
   };
 
+  // Creates a new episode for the selected anime.
   const addEpisode = async (data) => {
     if (!selectedAnime) return;
     setSaving(true);
@@ -87,6 +91,7 @@ export default function AdminEpisodes() {
     }
   };
 
+  // Opens the add-video-source modal for an episode.
   const openSourceModal = (episode) => {
     setEditingEpisode(episode);
     sourceForm.reset({ 
@@ -99,6 +104,7 @@ export default function AdminEpisodes() {
     setShowSourceModal(true);
   };
 
+  // Adds a video source link to the episode.
   const addSource = async (data) => {
     if (!editingEpisode) return;
     setSaving(true);
@@ -124,6 +130,7 @@ export default function AdminEpisodes() {
     }
   };
 
+  // Deletes an episode after user confirmation.
   const deleteEpisode = async (episode) => {
     const epId = episode.id || episode._id;
     if (!confirm('Delete this episode?')) return;

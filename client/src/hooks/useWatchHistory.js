@@ -1,11 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react';
 import useUserStore from '../store/userStore';
 
+// useWatchHistory: tracks video playback progress and saves it throttled to watch history
 export default function useWatchHistory(animeId, episodeId) {
   const addToHistory = useUserStore((s) => s.addToHistory);
   const lastSavedRef = useRef(0);
   const intervalRef = useRef(null);
 
+  // Saves progress to history, throttled to at most once every 30 seconds
   const saveProgress = useCallback(
     async (progress) => {
       if (!animeId || !episodeId) return;
@@ -19,6 +21,7 @@ export default function useWatchHistory(animeId, episodeId) {
     [animeId, episodeId, addToHistory]
   );
 
+  // Converts playback time to a percentage and decides when to save progress
   const handleTimeUpdate = useCallback(
     (currentTime, duration) => {
       if (!duration) return;
@@ -33,6 +36,7 @@ export default function useWatchHistory(animeId, episodeId) {
     [saveProgress]
   );
 
+  // Attaches timeupdate/ended listeners to a video element and returns cleanup
   const startTracking = useCallback(
     (videoElement) => {
       if (!videoElement) return;

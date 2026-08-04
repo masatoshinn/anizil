@@ -21,6 +21,7 @@ const statusStyles = {
   removed: 'bg-gray-500/20 text-gray-400',
 };
 
+// Admin page to moderate user comments by status.
 export default function AdminComments() {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +31,7 @@ export default function AdminComments() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [acting, setActing] = useState(null);
 
+  // Fetches paginated comments filtered by status tab.
   const fetchComments = useCallback(async () => {
     setLoading(true);
     try {
@@ -47,6 +49,7 @@ export default function AdminComments() {
 
   useEffect(() => { fetchComments(); }, [fetchComments]);
 
+  // Toggles a comment in the selection set.
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -55,6 +58,7 @@ export default function AdminComments() {
     });
   };
 
+  // Selects or clears all visible comments.
   const toggleAll = () => {
     if (selectedIds.size === comments.length) {
       setSelectedIds(new Set());
@@ -63,6 +67,7 @@ export default function AdminComments() {
     }
   };
 
+  // Changes a single comment's approval status.
   const actOnComment = async (id, action) => {
     setActing(id);
     try {
@@ -75,6 +80,7 @@ export default function AdminComments() {
     }
   };
 
+  // Applies an action to all selected comments.
   const bulkAction = async (action) => {
     if (selectedIds.size === 0) return;
     try {

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../lib/api';
 
+// authStore: zustand store managing authentication state, token, login/register/logout
 const useAuthStore = create((set, get) => ({
   user: null,
   token: localStorage.getItem('token') || null,
@@ -8,6 +9,7 @@ const useAuthStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
+  // Logs the user in with email/password and stores the returned token
   login: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
@@ -30,6 +32,7 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Registers a new user (optionally with a referral code) and stores the token
   register: async (name, email, password, referralCode) => {
     set({ isLoading: true, error: null });
     try {
@@ -52,6 +55,7 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Logs the user out and clears the stored token
   logout: () => {
     localStorage.removeItem('token');
     set({
@@ -62,6 +66,7 @@ const useAuthStore = create((set, get) => ({
     });
   },
 
+  // Fetches the current user from the token, clearing session on failure
   fetchUser: async () => {
     const { token } = get();
     if (!token) return;
@@ -88,6 +93,7 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Initializes auth from a URL token or a stored token and loads the user
   initialize: () => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
@@ -105,6 +111,7 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Clears the stored auth error
   clearError: () => set({ error: null }),
 }));
 

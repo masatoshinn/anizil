@@ -60,6 +60,7 @@ const BENEFITS = [
   { icon: Zap, title: 'HD Quality', desc: 'Stream in full HD and 4K quality' },
 ];
 
+// PremiumPage: marketing page for the premium subscription with plans, features, and FAQ
 export default function PremiumPage() {
   const { user, isAuthenticated } = useAuthStore();
   const { premiumEnabled, fetched, fetchSettings } = useSettingsStore();

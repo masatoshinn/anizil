@@ -5,10 +5,12 @@ import { Search, Shield, Ban, Eye, ChevronDown, Loader2, UserX, UserCheck, Award
 import api from '../../lib/api';
 import { cn, formatDate } from '../../lib/utils';
 import Modal from '../../components/common/Modal';
+import BadgeIcon from '../../components/common/BadgeIcon';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
 import toast from 'react-hot-toast';
 
+// Admin page to search, filter, and manage user accounts.
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ export default function AdminUsers() {
 
   const { register, handleSubmit, reset } = useForm();
 
+  // Fetches paginated user list with search and role filter.
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -47,17 +50,20 @@ export default function AdminUsers() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  // Opens role-change modal for the given user.
   const openRoleModal = (user) => {
     setSelectedUser(user);
     reset({ role: user.role || 'user' });
     setShowRoleModal(true);
   };
 
+  // Opens ban or unban confirmation for a user.
   const openBanModal = (user) => {
     setSelectedUser(user);
     setShowBanModal(true);
   };
 
+  // Loads badges and opens badge manager for a user.
   const openBadgeModal = async (user) => {
     setSelectedUser(user);
     setShowBadgeModal(true);
@@ -73,6 +79,7 @@ export default function AdminUsers() {
     setLoadingBadges(false);
   };
 
+  // Assigns a badge to the selected user.
   const handleAssignBadge = async (badgeId) => {
     try {
       await api.post(`/admin/users/${selectedUser.id}/badges`, { badge_id: badgeId });
@@ -82,6 +89,7 @@ export default function AdminUsers() {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
+  // Removes a badge from the selected user.
   const handleRemoveBadge = async (badgeId) => {
     try {
       await api.delete(`/admin/users/${selectedUser.id}/badges/${badgeId}`);
@@ -90,6 +98,7 @@ export default function AdminUsers() {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
+  // Updates the selected user's role.
   const changeRole = async (data) => {
     if (!selectedUser) return;
     setSaving(true);
@@ -104,6 +113,7 @@ export default function AdminUsers() {
     }
   };
 
+  // Bans or unbans the selected user.
   const toggleBan = async () => {
     if (!selectedUser) return;
     setSaving(true);
@@ -122,6 +132,7 @@ export default function AdminUsers() {
     super_admin: 'badge-danger',
     content_admin: 'badge-warning',
     moderator: 'badge-warning',
+    creator: 'badge-info',
     user: 'badge-success',
   };
 
@@ -149,6 +160,7 @@ export default function AdminUsers() {
           <option value="super_admin">Super Admin</option>
           <option value="content_admin">Content Admin</option>
           <option value="moderator">Moderator</option>
+          <option value="creator">Creator</option>
           <option value="user">User</option>
         </select>
       </div>
@@ -232,6 +244,7 @@ export default function AdminUsers() {
             <select {...register('role')} className="input-dark">
               <option value="user">User</option>
               <option value="moderator">Moderator</option>
+              <option value="creator">Creator</option>
               <option value="content_admin">Content Admin</option>
               <option value="super_admin">Super Admin</option>
             </select>
@@ -282,7 +295,7 @@ export default function AdminUsers() {
                     <div key={badge.id}
                       className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm"
                       style={{ borderColor: `${badge.color}40`, backgroundColor: `${badge.color}10` }}>
-                      <span>{badge.icon}</span>
+                      <span><BadgeIcon icon={badge.icon} /></span>
                       <span className="text-[#f8fafc]">{badge.name}</span>
                       <button onClick={() => handleRemoveBadge(badge.id)}
                         className="text-[#94a3b8] hover:text-red-400 transition-colors ml-1">
@@ -302,7 +315,7 @@ export default function AdminUsers() {
                   <button key={badge.id} onClick={() => handleAssignBadge(badge.id)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-all hover:scale-105"
                     style={{ borderColor: `${badge.color}30`, backgroundColor: `${badge.color}08` }}>
-                    <span>{badge.icon}</span>
+                    <span><BadgeIcon icon={badge.icon} /></span>
                     <span className="text-[#94a3b8]">{badge.name}</span>
                   </button>
                 ))}

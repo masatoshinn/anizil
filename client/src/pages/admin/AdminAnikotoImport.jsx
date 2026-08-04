@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils';
 import Pagination from '../../components/common/Pagination';
 import Skeleton from '../../components/common/Skeleton';
 
+// Admin page to search and import anime from Anikoto.
 export default function AdminAnikotoImport() {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
@@ -21,6 +22,7 @@ export default function AdminAnikotoImport() {
   const [showModeConfirm, setShowModeConfirm] = useState(null); // holds item to import
 
   useEffect(() => {
+    // Checks whether the Anikoto import API is online.
     const checkApi = async () => {
       try {
         await api.get('/import/anikoto/status');
@@ -32,6 +34,7 @@ export default function AdminAnikotoImport() {
     checkApi();
   }, []);
 
+  // Searches Anikoto for anime matching a query.
   const fetchResults = useCallback(async (query, p = 1) => {
     if (!query) return;
     setLoading(true);
@@ -53,6 +56,7 @@ export default function AdminAnikotoImport() {
     return () => clearTimeout(t);
   }, [search, fetchResults]);
 
+  // Imports a single anime as free or premium.
   const importSingle = async (item, premium = false) => {
     setImporting(item.id || item._id);
     try {
@@ -67,16 +71,19 @@ export default function AdminAnikotoImport() {
     }
   };
 
+  // Opens the import mode confirmation for an item.
   const handleImportClick = (item) => {
     setShowModeConfirm(item);
   };
 
+  // Runs the pending import in the chosen mode.
   const confirmImport = (premium) => {
     if (showModeConfirm) {
       importSingle(showModeConfirm, premium);
     }
   };
 
+  // Imports all selected, not-yet-imported anime.
   const importSelected = async () => {
     const toImport = results.filter((r) => selectedIds.has(r.id || r._id) && !imported.has(r.id || r._id));
     for (const item of toImport) {
@@ -85,6 +92,7 @@ export default function AdminAnikotoImport() {
     setSelectedIds(new Set());
   };
 
+  // Toggles an anime in the selection set.
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);

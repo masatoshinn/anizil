@@ -19,6 +19,7 @@ const SORTS = [
   { value: 'az', label: 'A-Z' },
 ];
 
+// GenrePage: lists all genres or shows a paginated, sortable anime list for one genre
 export default function GenrePage() {
   const { genreName } = useParams();
   const {

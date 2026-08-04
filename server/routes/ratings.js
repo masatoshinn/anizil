@@ -7,6 +7,7 @@ const router = express.Router();
 
 const VALID_TYPES = ['anime', 'manga'];
 
+// Normalize a content type string to 'anime'/'manga' or null if invalid.
 function normalizeType(t) {
   const value = String(t || '').toLowerCase();
   return VALID_TYPES.includes(value) ? value : null;
@@ -26,6 +27,7 @@ async function recomputeRating(pool, contentType, contentId) {
   return { avg, count: cnt };
 }
 
+// Check whether the target anime or manga row exists in the database.
 async function contentExists(pool, contentType, contentId) {
   const table = contentType === 'anime' ? 'anime' : 'mangas';
   const [rows] = await pool.query(`SELECT id FROM ${table} WHERE id = ?`, [contentId]);

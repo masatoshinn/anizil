@@ -20,10 +20,12 @@ const defaultAnimeValues = {
   featured: false, premium: false,
 };
 
+// Converts a title into a URL-friendly slug.
 function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+// Admin page to list, create, edit, and delete anime.
 export default function AdminAnime() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [animeList, setAnimeList] = useState([]);
@@ -53,6 +55,7 @@ export default function AdminAnime() {
     }
   }, [searchParams, setSearchParams]);
 
+  // Fetches paginated anime list with search and status filters.
   const fetchAnime = useCallback(async () => {
     setLoading(true);
     try {
@@ -78,12 +81,14 @@ export default function AdminAnime() {
     }
   }, [titleValue, editingAnime, setValue]);
 
+  // Opens the add-anime modal with blank form values.
   const openAddModal = () => {
     setEditingAnime(null);
     reset(defaultAnimeValues);
     setShowAddModal(true);
   };
 
+  // Opens the edit modal pre-filled with anime data.
   const openEditModal = (anime) => {
     setEditingAnime(anime);
     reset({
@@ -110,6 +115,7 @@ export default function AdminAnime() {
     setShowAddModal(true);
   };
 
+  // Creates or updates an anime via the admin API.
   const onSubmit = async (data) => {
     setSaving(true);
     try {
@@ -157,6 +163,7 @@ export default function AdminAnime() {
     }
   };
 
+  // Deletes the selected anime after confirmation.
   const handleDelete = async () => {
     if (!deletingAnime) return;
     try {

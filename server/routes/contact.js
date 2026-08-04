@@ -7,6 +7,7 @@ const router = express.Router();
 
 const contactLimiter = require('../middleware/rateLimit').apiLimiter;
 
+// Attach req.user if a valid token is present; otherwise pass through.
 const optionalAuth = async (req, res, next) => {
   try {
     const jwt = require('jsonwebtoken');
@@ -24,6 +25,7 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
+// Validate and store a contact message, optionally notifying the owner by email.
 router.post('/', optionalAuth, contactLimiter, [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),

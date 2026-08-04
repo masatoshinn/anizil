@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+// Run schema creation and seed routines against the database
 (async () => {
   const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
@@ -125,6 +126,7 @@ require('dotenv').config();
       rating DECIMAL(3,1) DEFAULT 0,
       follow_count INT DEFAULT 0,
       mangadex_id VARCHAR(100) DEFAULT NULL,
+      created_by INT DEFAULT NULL,
       user_rating DECIMAL(3,1) DEFAULT 0,
       rating_count INT DEFAULT 0,
       views INT DEFAULT 0,
@@ -159,6 +161,18 @@ require('dotenv').config();
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       UNIQUE KEY unique_user_content (content_type, content_id, user_id),
       INDEX idx_content (content_type, content_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS notifications (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      title VARCHAR(255),
+      content TEXT,
+      type VARCHAR(50) DEFAULT 'general',
+      link VARCHAR(500),
+      is_read TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_notif_user (user_id, is_read),
+      INDEX idx_notif_user_created (user_id, created_at)
     )`,
   ];
 
@@ -317,7 +331,7 @@ require('dotenv').config();
     `CREATE TABLE IF NOT EXISTS badges (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
-      icon VARCHAR(10) NOT NULL DEFAULT '⭐',
+      icon VARCHAR(50) NOT NULL DEFAULT 'fa-solid fa-star',
       color VARCHAR(20) NOT NULL DEFAULT '#0ea5e9',
       description VARCHAR(255) DEFAULT '',
       is_verified TINYINT(1) DEFAULT 0,
@@ -343,17 +357,24 @@ require('dotenv').config();
   console.log('Badge tables created');
 
   const badgeList = [
-    ['Verified', '✓', '#22c55e', 'Official verified account', 1],
-    ['VIP', '👑', '#fbbf24', 'Premium VIP member', 0],
-    ['Early Supporter', '🌟', '#0ea5e9', 'Joined during beta', 0],
-    ['Top Contributor', '🏆', '#a855f7', 'Top community contributor', 0],
-    ['Content Creator', '🎬', '#ec4899', 'Creates anime content', 0],
-    ['Legendary Watcher', '🔥', '#f97316', 'Watched 500+ episodes', 0],
-    ['Master Reviewer', '📝', '#06b6d4', 'Wrote 50+ reviews', 0],
-    ['Community Helper', '💙', '#3b82f6', 'Helped other members', 0],
-    ['OG Member', '⚜️', '#f59e0b', 'Member for over 1 year', 0],
-    ['Anime Master', '🎯', '#ef4444', 'Completed 100+ anime', 0],
+    ['Verified', 'fa-solid fa-badge-check', '#22c55e', 'Official verified account', 1],
+    ['VIP', 'fa-solid fa-gem', '#fbbf24', 'Premium VIP member', 0],
+    ['Early Supporter', 'fa-solid fa-star', '#0ea5e9', 'Joined during beta', 0],
+    ['Top Contributor', 'fa-solid fa-trophy', '#a855f7', 'Top community contributor', 0],
+    ['Content Creator', 'fa-solid fa-clapperboard', '#ec4899', 'Creates anime content', 0],
+    ['Legendary Watcher', 'fa-solid fa-fire', '#f97316', 'Watched 500+ episodes', 0],
+    ['Master Reviewer', 'fa-solid fa-pen-to-square', '#06b6d4', 'Wrote 50+ reviews', 0],
+    ['Community Helper', 'fa-solid fa-hand-holding-heart', '#3b82f6', 'Helped other members', 0],
+    ['OG Member', 'fa-solid fa-award', '#f59e0b', 'Member for over 1 year', 0],
+    ['Anime Master', 'fa-solid fa-crosshairs', '#ef4444', 'Completed 100+ anime', 0],
   ];
+
+  // Widen icon column on existing databases (idempotent on every boot).
+  try {
+    await pool.query('ALTER TABLE badges MODIFY COLUMN icon VARCHAR(50) NOT NULL DEFAULT "fa-solid fa-star"');
+  } catch (e) {
+    console.log('Badge icon column already compatible:', e.message);
+  }
 
   const [badgeCount] = await pool.query('SELECT COUNT(*) as cnt FROM badges');
   if (badgeCount[0].cnt === 0) {
@@ -367,6 +388,57 @@ require('dotenv').config();
   } else {
     console.log('Badges already exist:', badgeCount[0].cnt);
   }
+
+  // Default role badges + auto-assign to matching users (runs every boot,
+  // safe: seeded by name and assigned with INSERT IGNORE).
+  const roleBadges = [
+    ['Super Admin', 'fa-solid fa-crown', '#ef4444', 'Site super administrator', 0, 'super_admin'],
+    ['Admin', 'fa-solid fa-user-shield', '#fbbf24', 'Site administrator', 0, 'content_admin'],
+    ['Moderator', 'fa-solid fa-shield-halved', '#0ea5e9', 'Community moderator', 0, 'moderator'],
+    ['Creator', 'fa-solid fa-pen-nib', '#ec4899', 'Site content creator', 0, 'creator'],
+  ];
+  for (const [name, icon, color, desc, verified, role] of roleBadges) {
+    const [existing] = await pool.query('SELECT id FROM badges WHERE name = ?', [name]);
+    let badgeId = existing[0]?.id;
+    if (!badgeId) {
+      const [ins] = await pool.query(
+        'INSERT INTO badges (name, icon, color, description, is_verified) VALUES (?, ?, ?, ?, ?)',
+        [name, icon, color, desc, verified]
+      );
+      badgeId = ins.insertId;
+      console.log('Seeded role badge:', name);
+    }
+    const [users] = await pool.query('SELECT id FROM users WHERE role = ?', [role]);
+    for (const u of users) {
+      await pool.query('INSERT IGNORE INTO user_badges (user_id, badge_id) VALUES (?, ?)', [u.id, badgeId]);
+    }
+  }
+
+  // Keep FontAwesome icons in sync for existing databases (runs every boot,
+  // fixes old emoji icons and any values truncated before the column was widened).
+  const defaultIconMap = {
+    'Verified': 'fa-solid fa-badge-check',
+    'Super Admin': 'fa-solid fa-crown',
+    'Admin': 'fa-solid fa-user-shield',
+    'Moderator': 'fa-solid fa-shield-halved',
+    'Creator': 'fa-solid fa-pen-nib',
+    'VIP': 'fa-solid fa-gem',
+    'Early Supporter': 'fa-solid fa-star',
+    'Top Contributor': 'fa-solid fa-trophy',
+    'Content Creator': 'fa-solid fa-clapperboard',
+    'Legendary Watcher': 'fa-solid fa-fire',
+    'Master Reviewer': 'fa-solid fa-pen-to-square',
+    'Community Helper': 'fa-solid fa-hand-holding-heart',
+    'OG Member': 'fa-solid fa-award',
+    'Anime Master': 'fa-solid fa-crosshairs',
+  };
+  for (const [name, icon] of Object.entries(defaultIconMap)) {
+    await pool.query('UPDATE badges SET icon = ? WHERE name = ?', [icon, name]);
+  }
+  // Role badges show their own icon (NOT the green verified checkmark).
+  await pool.query(
+    "UPDATE badges SET is_verified = 0 WHERE name IN ('Super Admin','Admin','Moderator','Creator')"
+  );
 
   // Auto-assign Verified badge to all super_admin users
   const [superAdmins] = await pool.query("SELECT id FROM users WHERE role = 'super_admin'");

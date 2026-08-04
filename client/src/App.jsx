@@ -57,7 +57,10 @@ import AdminMessages from './pages/admin/AdminMessages';
 import AdminVisitors from './pages/admin/AdminVisitors';
 import AdminMangaImport from './pages/admin/AdminMangaImport';
 import AdminManga from './pages/admin/AdminManga';
+import CreatorManga from './pages/creator/CreatorManga';
+import CreatorDashboard from './pages/creator/CreatorDashboard';
 
+// ProtectedRoute: redirects unauthenticated users to login
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
 
@@ -76,6 +79,7 @@ function ProtectedRoute({ children }) {
   return children || <Outlet />;
 }
 
+// AdminRoute: restricts access to admin/moderator roles inside the admin layout
 function AdminRoute() {
   const { user, isAuthenticated, isLoading } = useAuthStore();
 
@@ -102,6 +106,7 @@ function AdminRoute() {
   );
 }
 
+// PublicRoute: redirects authenticated users away from auth pages
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuthStore();
 
@@ -112,6 +117,26 @@ function PublicRoute({ children }) {
   return children || <Outlet />;
 }
 
+// CreatorRoute: restricts access to creator and admin roles
+function CreatorRoute() {
+  const { user, isAuthenticated, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-dark">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !['super_admin', 'content_admin', 'moderator', 'creator'].includes(user?.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
+}
+
+// App: root component that initializes auth/theme and defines all application routes
 function App() {
   const { initialize } = useAuthStore();
   const { initTheme } = useThemeStore();
@@ -188,6 +213,14 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+              </Route>
+            </Route>
+
+            {/* Creator Routes */}
+            <Route element={<CreatorRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/creator" element={<CreatorDashboard />} />
+                <Route path="/creator/manga" element={<CreatorManga />} />
               </Route>
             </Route>
 

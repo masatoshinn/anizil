@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.use(auth, adminAuth);
 
+// Return admin dashboard statistics and recent entries.
 router.get('/dashboard', async (req, res) => {
   try {
     const pool = await getPool();
@@ -72,6 +73,7 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
+// List anime with search/status filters for the admin panel.
 router.get('/anime', async (req, res) => {
   try {
     const pool = await getPool();
@@ -123,6 +125,7 @@ router.get('/anime', async (req, res) => {
   }
 });
 
+// Create a new anime with a unique slug.
 router.post('/anime', requirePermission('manage_anime'), [
   body('title').trim().notEmpty().withMessage('Title is required'),
   body('genres').optional().trim(),
@@ -189,6 +192,7 @@ router.post('/anime', requirePermission('manage_anime'), [
   }
 });
 
+// Partially update an anime's allowed fields.
 router.put('/anime/:id', requirePermission('manage_anime'), [
   body('title').optional().trim().notEmpty().withMessage('Title cannot be empty')
 ], async (req, res) => {
@@ -260,6 +264,7 @@ router.put('/anime/:id', requirePermission('manage_anime'), [
   }
 });
 
+// Delete an anime and log the action.
 router.delete('/anime/:id', requirePermission('manage_anime'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -293,6 +298,7 @@ router.delete('/anime/:id', requirePermission('manage_anime'), async (req, res) 
   }
 });
 
+// List episodes with optional anime filter and sources.
 router.get('/episodes', async (req, res) => {
   try {
     const pool = await getPool();
@@ -352,6 +358,7 @@ router.get('/episodes', async (req, res) => {
   }
 });
 
+// Create an episode and its streaming sources.
 router.post('/episodes', requirePermission('manage_episodes'), [
   body('anime_id').isInt().withMessage('Anime ID is required'),
   body('episode_number').isInt().withMessage('Episode number is required'),
@@ -416,6 +423,7 @@ router.post('/episodes', requirePermission('manage_episodes'), [
   }
 });
 
+// Update episode fields and optionally replace sources.
 router.put('/episodes/:id', requirePermission('manage_episodes'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -473,6 +481,7 @@ router.put('/episodes/:id', requirePermission('manage_episodes'), async (req, re
   }
 });
 
+// Delete an episode and refresh the anime count.
 router.delete('/episodes/:id', requirePermission('manage_episodes'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -506,6 +515,7 @@ router.delete('/episodes/:id', requirePermission('manage_episodes'), async (req,
   }
 });
 
+// List users with search and role filters.
 router.get('/users', async (req, res) => {
   try {
     const pool = await getPool();
@@ -560,8 +570,9 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// Change a user's role, restricting super_admin promotion.
 router.put('/users/:id/role', requirePermission('manage_users'), [
-  body('role').isIn(['super_admin', 'content_admin', 'moderator', 'user']).withMessage('Invalid role')
+  body('role').isIn(['super_admin', 'content_admin', 'moderator', 'creator', 'user']).withMessage('Invalid role')
 ], async (req, res) => {
   try {
     const pool = await getPool();
@@ -612,6 +623,7 @@ router.put('/users/:id/role', requirePermission('manage_users'), [
   }
 });
 
+// Toggle a user's banned status.
 router.put('/users/:id/ban', requirePermission('manage_users'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -653,6 +665,7 @@ router.put('/users/:id/ban', requirePermission('manage_users'), async (req, res)
   }
 });
 
+// List comments, optionally filtered by moderation status.
 router.get('/comments', async (req, res) => {
   try {
     const pool = await getPool();
@@ -704,6 +717,7 @@ router.get('/comments', async (req, res) => {
   }
 });
 
+// Set a comment's moderation status.
 router.put('/comments/:id/status', requirePermission('manage_comments'), [
   body('status').isIn(['pending', 'approved', 'flagged', 'removed']).withMessage('Invalid status')
 ], async (req, res) => {
@@ -744,6 +758,7 @@ router.put('/comments/:id/status', requirePermission('manage_comments'), [
   }
 });
 
+// List comment reports with optional status filter.
 router.get('/reports', async (req, res) => {
   try {
     const pool = await getPool();
@@ -797,6 +812,7 @@ router.get('/reports', async (req, res) => {
   }
 });
 
+// Update report status, removing the comment when resolved.
 router.put('/reports/:id', requirePermission('manage_reports'), [
   body('status').isIn(['pending', 'dismissed', 'resolved']).withMessage('Invalid status')
 ], async (req, res) => {
@@ -841,6 +857,7 @@ router.put('/reports/:id', requirePermission('manage_reports'), [
   }
 });
 
+// Return all site settings as a keyed object.
 router.get('/settings', async (req, res) => {
   try {
     const pool = await getPool();
@@ -867,6 +884,7 @@ router.get('/settings', async (req, res) => {
   }
 });
 
+// Upsert the supplied site settings values.
 router.put('/settings', requirePermission('manage_settings'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -892,6 +910,7 @@ router.put('/settings', requirePermission('manage_settings'), async (req, res) =
   }
 });
 
+// List all API tokens with their owners.
 router.get('/api-tokens', async (req, res) => {
   try {
     const pool = await getPool();
@@ -915,6 +934,7 @@ router.get('/api-tokens', async (req, res) => {
   }
 });
 
+// Generate and store a new API token for a user.
 router.post('/api-tokens', requirePermission('manage_tokens'), [
   body('user_id').isInt().withMessage('User ID is required'),
   body('name').trim().notEmpty().withMessage('Token name is required'),
@@ -963,6 +983,7 @@ router.post('/api-tokens', requirePermission('manage_tokens'), [
   }
 });
 
+// Delete an API token by id.
 router.delete('/api-tokens/:id', requirePermission('manage_tokens'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -991,6 +1012,7 @@ router.delete('/api-tokens/:id', requirePermission('manage_tokens'), async (req,
   }
 });
 
+// List redeem codes with redemption info.
 router.get('/redeem-codes', async (req, res) => {
   try {
     const pool = await getPool();
@@ -1029,6 +1051,7 @@ router.get('/redeem-codes', async (req, res) => {
   }
 });
 
+// Generate one or more redeem codes, skipping duplicates.
 router.post('/redeem-codes', requirePermission('manage_codes'), [
   body('reward_type').isIn(['xp', 'premium_days', 'credits']).withMessage('Invalid reward type'),
   body('reward_amount').isInt({ min: 1 }).withMessage('Reward amount must be positive'),
@@ -1086,6 +1109,7 @@ router.post('/redeem-codes', requirePermission('manage_codes'), [
   }
 });
 
+// Delete a redeem code by id.
 router.delete('/redeem-codes/:id', requirePermission('manage_codes'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -1114,6 +1138,7 @@ router.delete('/redeem-codes/:id', requirePermission('manage_codes'), async (req
   }
 });
 
+// Return role definitions merged with custom permissions.
 router.get('/roles', async (req, res) => {
   try {
     const pool = await getPool();
@@ -1137,6 +1162,11 @@ router.get('/roles', async (req, res) => {
         name: 'user',
         description: 'Regular user',
         permissions: []
+      },
+      {
+        name: 'creator',
+        description: 'Can create and manage their own manga',
+        permissions: ['create_manga']
       }
     ];
 
@@ -1170,6 +1200,7 @@ router.get('/roles', async (req, res) => {
   }
 });
 
+// Persist custom permission sets for a role.
 router.put('/roles/:role', requirePermission('manage_roles'), [
   body('permissions').isArray().withMessage('Permissions must be an array')
 ], async (req, res) => {
@@ -1401,6 +1432,7 @@ router.get('/settings/ads', async (req, res) => {
   }
 });
 
+// Upsert ad-prefixed settings from the request body.
 router.put('/settings/ads', requirePermission('manage_settings'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -1615,6 +1647,7 @@ router.get('/messages', async (req, res) => {
   }
 });
 
+// Update a contact message's moderation status.
 router.put('/messages/:id', requirePermission('manage_comments'), async (req, res) => {
   try {
     const pool = await getPool();
@@ -1633,6 +1666,7 @@ router.put('/messages/:id', requirePermission('manage_comments'), async (req, re
   }
 });
 
+// Delete a contact message by id.
 router.delete('/messages/:id', requirePermission('manage_comments'), async (req, res) => {
   try {
     const pool = await getPool();
