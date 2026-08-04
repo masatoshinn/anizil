@@ -6,6 +6,10 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
+// Trust the first proxy hop (cPanel/LiteSpeed sends X-Forwarded-For).
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// and crashes the process on every request.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001; // cPanel-এ রান করার সময় পোর্ট অটোমেটিক সেট হতে পারে
 const NODE_ENV = process.env.NODE_ENV || 'production'; // হোস্টিংয়ের জন্য ডিফল্ট 'production' করে দেওয়া ভালো[cite: 1]
 
