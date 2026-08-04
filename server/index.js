@@ -43,6 +43,7 @@ const contactRoutes = require('./routes/contact');
 const mangaRoutes = require('./routes/manga');
 const ratingsRoutes = require('./routes/ratings');
 const creatorRoutes = require('./routes/creator');
+const sitemapRoutes = require('./routes/sitemap');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/anime', animeRoutes);
@@ -58,6 +59,9 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/manga', mangaRoutes);
 app.use('/api/ratings', ratingsRoutes);
 app.use('/api/creator', creatorRoutes);
+
+// SEO: sitemap.xml and robots.txt served at the site root
+app.use(sitemapRoutes);
 
 // Health check endpoint returning API status
 app.get('/api/health', (req, res) => {
