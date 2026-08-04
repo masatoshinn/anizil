@@ -1519,6 +1519,52 @@ router.delete('/badges/:id', requirePermission('manage_settings'), async (req, r
   }
 });
 
+// Send a notification to a user, a role, or all users.
+router.post('/notifications/send', requirePermission('manage_users'), [
+  body('title').trim().notEmpty().withMessage('Title is required'),
+  body('content').trim().notEmpty().withMessage('Content is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, message: 'Validation errors', errors: errors.array() });
+    const pool = await getPool();
+    const { title, content, type = 'general', link = '', userId, role } = req.body;
+
+    if (userId) {
+      const [users] = await pool.query('SELECT id FROM users WHERE id = ?', [userId]);
+      if (users.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
+      await pool.query(
+        'INSERT INTO notifications (user_id, title, content, type, link) VALUES (?, ?, ?, ?, ?)',
+        [userId, title.trim(), content.trim(), type, link]
+      );
+      return res.json({ success: true, message: 'Notification sent to user' });
+    }
+
+    if (role) {
+      const [users] = await pool.query('SELECT id FROM users WHERE role = ?', [role]);
+      for (const u of users) {
+        await pool.query(
+          'INSERT INTO notifications (user_id, title, content, type, link) VALUES (?, ?, ?, ?, ?)',
+          [u.id, title.trim(), content.trim(), type, link]
+        );
+      }
+      return res.json({ success: true, message: `Notification sent to ${users.length} user(s) with role "${role}"` });
+    }
+
+    const [users] = await pool.query('SELECT id FROM users');
+    for (const u of users) {
+      await pool.query(
+        'INSERT INTO notifications (user_id, title, content, type, link) VALUES (?, ?, ?, ?, ?)',
+        [u.id, title.trim(), content.trim(), type, link]
+      );
+    }
+    res.json({ success: true, message: `Notification sent to all ${users.length} user(s)` });
+  } catch (error) {
+    console.error('Send notification error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // Get badges for a specific user
 router.get('/users/:id/badges', async (req, res) => {
   try {
@@ -1564,6 +1610,11 @@ router.post('/users/:id/badges', requirePermission('manage_users'), [
     await pool.query(
       'INSERT INTO activity_feed (user_id, action, details) VALUES (?, ?, ?)',
       [req.user.id, 'assign_badge', `Assigned "${badges[0].name}" badge to ${users[0]?.name || 'user'} #${req.params.id}`]
+    );
+    // Notify the user that they received a badge
+    await pool.query(
+      'INSERT INTO notifications (user_id, title, content, type, link) VALUES (?, ?, ?, ?, ?)',
+      [req.params.id, 'New Badge Earned!', `You received the "${badges[0].name}" badge`, 'badge', '/dashboard?tab=achievements']
     );
     res.json({ success: true, message: 'Badge assigned!' });
   } catch (error) {

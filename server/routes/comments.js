@@ -263,7 +263,7 @@ router.post('/', auth, [
 
     if (pId) {
       const [parentComment] = await pool.query(
-        'SELECT id FROM comments WHERE id = ?',
+        'SELECT id, user_id, content FROM comments WHERE id = ?',
         [pId]
       );
       if (parentComment.length === 0) {
@@ -291,6 +291,27 @@ router.post('/', auth, [
 
     // Award XP for comment
     await pool.query('UPDATE users SET xp = xp + 5 WHERE id = ?', [req.user.id]);
+
+    // Notify the parent comment author when someone replies to their comment
+    if (pId && parentComment[0].user_id !== req.user.id) {
+      let replyLink = '/';
+      if (anId) {
+        const [animeRow] = await pool.query('SELECT slug FROM anime WHERE id = ?', [anId]);
+        if (animeRow.length > 0) replyLink = `/anime/${animeRow[0].slug}`;
+      } else if (epId) {
+        replyLink = `/episode/${epId}`;
+      }
+      await pool.query(
+        'INSERT INTO notifications (user_id, title, content, type, link) VALUES (?, ?, ?, ?, ?)',
+        [
+          parentComment[0].user_id,
+          'New Reply',
+          `${req.user.name} replied to your comment`,
+          'comment_reply',
+          replyLink
+        ]
+      );
+    }
 
     // Check comment achievements
     const [commentCount] = await pool.query(

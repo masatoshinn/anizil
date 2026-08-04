@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageSquare, Plus, ThumbsUp, ChevronRight, Clock, User, X, Send, ChevronDown,
+  MessageSquare, Plus, ThumbsUp, ChevronRight, Clock, User, X, Send,
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
+import useSettingsStore from '../store/settingsStore';
 import Skeleton from '../components/common/Skeleton';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
@@ -24,17 +25,20 @@ const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { st
 
 // ForumPage: community forum with category tabs, thread list, thread creation, and replies
 export default function ForumPage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
+  const { fetched, fetchSettings, forumEnabled } = useSettingsStore();
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [disabled, setDisabled] = useState(false);
 
   // Create Thread Modal
   const [showCreate, setShowCreate] = useState(false);
   const [newThread, setNewThread] = useState({ title: '', content: '', category: 'General' });
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   // Thread Detail
   const [selectedThread, setSelectedThread] = useState(null);
@@ -44,18 +48,27 @@ export default function ForumPage() {
   const [replyLoading, setReplyLoading] = useState(false);
 
   useEffect(() => {
+    if (!fetched) fetchSettings();
+  }, [fetched]);
+
+  useEffect(() => {
+    if (fetched && forumEnabled === false) {
+      setDisabled(true);
+      return;
+    }
+    setDisabled(false);
     loadThreads();
-  }, [activeCategory, page]);
+  }, [activeCategory, page, fetched, forumEnabled]);
 
   // Loads the paginated thread list for the active category
   const loadThreads = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page, limit: 20 });
-      if (activeCategory !== 'All') params.append('category', activeCategory);
-      const res = await api.get(`/forum/threads?${params}`);
-      setThreads(res.data.threads || res.data.data || []);
-      setTotalPages(res.data.pagination?.totalPages || 1);
+      if (activeCategory !== 'All') params.append('category', activeCategory.toLowerCase());
+      const res = await api.get(`/forum/posts?${params}`);
+      setThreads(res.data.data?.posts || res.data.data || []);
+      setTotalPages(res.data.data?.pagination?.pages || 1);
     } catch {}
     setLoading(false);
   };
@@ -65,12 +78,19 @@ export default function ForumPage() {
     e.preventDefault();
     if (!newThread.title.trim() || !newThread.content.trim()) return;
     setCreating(true);
+    setCreateError('');
     try {
-      const res = await api.post('/forum/threads', newThread);
-      setThreads([res.data.thread || res.data, ...threads]);
+      const res = await api.post('/forum/posts', {
+        title: newThread.title.trim(),
+        content: newThread.content.trim(),
+        category: newThread.category.toLowerCase(),
+      });
+      setThreads([res.data.data || res.data, ...threads]);
       setShowCreate(false);
       setNewThread({ title: '', content: '', category: 'General' });
-    } catch {}
+    } catch (err) {
+      setCreateError(err.response?.data?.message || 'Failed to create thread. Please try again.');
+    }
     setCreating(false);
   };
 
@@ -78,9 +98,10 @@ export default function ForumPage() {
   const openThread = async (thread) => {
     setSelectedThread(thread);
     try {
-      const res = await api.get(`/forum/threads/${thread._id}`);
-      setThreadDetail(res.data.thread || res.data);
-      setReplies(res.data.replies || []);
+      const res = await api.get(`/forum/posts/${thread.id}`);
+      const data = res.data.data || res.data;
+      setThreadDetail(data);
+      setReplies(data.replies || []);
     } catch {}
   };
 
@@ -90,8 +111,8 @@ export default function ForumPage() {
     if (!replyText.trim() || !selectedThread) return;
     setReplyLoading(true);
     try {
-      const res = await api.post(`/forum/threads/${selectedThread._id}/replies`, { text: replyText });
-      setReplies([...replies, res.data.reply || res.data]);
+      const res = await api.post(`/forum/posts/${selectedThread.id}/reply`, { content: replyText.trim() });
+      setReplies([...replies, res.data.data || res.data]);
       setReplyText('');
     } catch {}
     setReplyLoading(false);
@@ -100,14 +121,16 @@ export default function ForumPage() {
   // Likes a forum thread and increments its local like count
   const likeThread = async (threadId) => {
     try {
-      await api.post(`/forum/threads/${threadId}/like`);
+      await api.post(`/forum/posts/${threadId}/like`);
       setThreads((prev) =>
         prev.map((t) =>
-          t._id === threadId ? { ...t, likes: (t.likes || 0) + 1 } : t
+          t.id === threadId ? { ...t, likes: (t.likes || 0) + 1 } : t
         )
       );
     } catch {}
   };
+
+  const canPost = isAuthenticated && !disabled;
 
   return (
     <div className="min-h-screen py-8">
@@ -122,7 +145,7 @@ export default function ForumPage() {
             <h1 className="text-3xl font-bold text-[#f8fafc]">Forum</h1>
             <p className="text-[#94a3b8] text-sm mt-1">Join the community discussion</p>
           </div>
-          {isAuthenticated && (
+          {canPost && (
             <button
               onClick={() => setShowCreate(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white rounded-lg font-medium transition-colors shadow-lg shadow-[#0ea5e9]/25"
@@ -150,8 +173,13 @@ export default function ForumPage() {
           ))}
         </div>
 
-        {/* Thread List */}
-        {loading ? (
+        {disabled ? (
+          <div className="text-center py-20">
+            <MessageSquare className="w-16 h-16 text-[#94a3b8]/30 mx-auto mb-4" />
+            <h3 className="text-[#f8fafc] text-xl font-semibold mb-2">Forum is currently disabled</h3>
+            <p className="text-[#94a3b8]">Check back later</p>
+          </div>
+        ) : loading ? (
           <div className="space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-20 rounded-xl" />
@@ -173,20 +201,20 @@ export default function ForumPage() {
             >
               {threads.map((thread) => (
                 <motion.div
-                  key={thread._id}
+                  key={thread.id}
                   variants={fadeIn}
                   className="bg-[#1e293b] border border-[rgba(148,163,184,0.12)] rounded-xl p-4 hover:bg-[#334155] transition-colors cursor-pointer"
                   onClick={() => openThread(thread)}
                 >
                   <div className="flex items-start gap-4">
                     <div className="w-9 h-9 rounded-full bg-[#0ea5e9]/20 flex items-center justify-center text-[#0ea5e9] text-sm font-bold flex-shrink-0">
-                      {(thread.author?.name || 'U')[0].toUpperCase()}
+                      {(thread.user_name || 'U')[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className={cn(
-                          'text-xs px-2 py-0.5 rounded-full font-medium',
-                          CATEGORY_COLORS[thread.category] || 'bg-gray-500/20 text-gray-400'
+                          'text-xs px-2 py-0.5 rounded-full font-medium capitalize',
+                          CATEGORY_COLORS[(thread.category || 'general').charAt(0).toUpperCase() + (thread.category || 'general').slice(1)] || 'bg-gray-500/20 text-gray-400'
                         )}>
                           {thread.category}
                         </span>
@@ -194,16 +222,16 @@ export default function ForumPage() {
                       <h3 className="text-[#f8fafc] font-semibold mb-1 truncate">{thread.title}</h3>
                       <div className="flex items-center gap-4 text-xs text-[#94a3b8]">
                         <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" /> {thread.author?.name || 'Anonymous'}
+                          <User className="w-3 h-3" /> {thread.user_name || 'Anonymous'}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {timeAgo(thread.createdAt)}
+                          <Clock className="w-3 h-3" /> {timeAgo(thread.created_at)}
                         </span>
                         <span className="flex items-center gap-1">
-                          <MessageSquare className="w-3 h-3" /> {thread.replyCount || replies.length || 0}
+                          <MessageSquare className="w-3 h-3" /> {thread.reply_count || 0}
                         </span>
                         <button
-                          onClick={(e) => { e.stopPropagation(); likeThread(thread._id); }}
+                          onClick={(e) => { e.stopPropagation(); likeThread(thread.id); }}
                           className="flex items-center gap-1 hover:text-[#0ea5e9] transition-colors"
                         >
                           <ThumbsUp className="w-3 h-3" /> {thread.likes || 0}
@@ -273,6 +301,7 @@ export default function ForumPage() {
                       className="w-full bg-[#0f172a] border border-[rgba(148,163,184,0.12)] rounded-lg px-4 py-2.5 text-[#f8fafc] placeholder-[#94a3b8] text-sm focus:outline-none focus:border-[#0ea5e9]/50 resize-none"
                     />
                   </div>
+                  {createError && <p className="text-sm text-[#ef4444]">{createError}</p>}
                   <button
                     type="submit"
                     disabled={creating || !newThread.title.trim() || !newThread.content.trim()}
@@ -299,8 +328,8 @@ export default function ForumPage() {
                 <div className="flex items-center justify-between p-6 pb-0">
                   <div className="flex-1 min-w-0">
                     <span className={cn(
-                      'text-xs px-2 py-0.5 rounded-full font-medium',
-                      CATEGORY_COLORS[threadDetail?.category || selectedThread.category] || 'bg-gray-500/20 text-gray-400'
+                      'text-xs px-2 py-0.5 rounded-full font-medium capitalize',
+                      CATEGORY_COLORS[(threadDetail?.category || selectedThread.category || 'general').charAt(0).toUpperCase() + (threadDetail?.category || selectedThread.category || 'general').slice(1)] || 'bg-gray-500/20 text-gray-400'
                     )}>
                       {threadDetail?.category || selectedThread.category}
                     </span>
@@ -319,6 +348,15 @@ export default function ForumPage() {
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                   {/* Original Post */}
                   <div className="bg-[#0f172a] rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-full bg-[#0ea5e9]/20 flex items-center justify-center text-[#0ea5e9] text-xs font-bold">
+                        {(threadDetail?.user_name || selectedThread.user_name || 'U')[0].toUpperCase()}
+                      </div>
+                      <span className="text-[#f8fafc] text-sm font-medium">
+                        {threadDetail?.user_name || selectedThread.user_name || 'Anonymous'}
+                      </span>
+                      <span className="text-[#94a3b8] text-xs">{timeAgo(threadDetail?.created_at || selectedThread.created_at)}</span>
+                    </div>
                     <p className="text-[#94a3b8] text-sm leading-relaxed whitespace-pre-wrap">
                       {threadDetail?.content || selectedThread.content}
                     </p>
@@ -331,15 +369,15 @@ export default function ForumPage() {
                         {replies.length} {replies.length === 1 ? 'Reply' : 'Replies'}
                       </h3>
                       {replies.map((reply) => (
-                        <div key={reply._id} className="bg-[#0f172a] rounded-lg p-3">
+                        <div key={reply.id} className="bg-[#0f172a] rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-1">
                             <div className="w-6 h-6 rounded-full bg-[#0ea5e9]/20 flex items-center justify-center text-[#0ea5e9] text-xs font-bold">
-                              {(reply.author?.name || 'U')[0].toUpperCase()}
+                              {(reply.user_name || 'U')[0].toUpperCase()}
                             </div>
-                            <span className="text-[#f8fafc] text-xs font-medium">{reply.author?.name || 'Anonymous'}</span>
-                            <span className="text-[#94a3b8] text-xs">{timeAgo(reply.createdAt)}</span>
+                            <span className="text-[#f8fafc] text-xs font-medium">{reply.user_name || 'Anonymous'}</span>
+                            <span className="text-[#94a3b8] text-xs">{timeAgo(reply.created_at)}</span>
                           </div>
-                          <p className="text-[#94a3b8] text-sm ml-8">{reply.text}</p>
+                          <p className="text-[#94a3b8] text-sm ml-8">{reply.content}</p>
                         </div>
                       ))}
                     </div>

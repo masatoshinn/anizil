@@ -20,6 +20,7 @@ import {
   Plug,
   Mail,
   Eye,
+  Bell,
   ChevronLeft,
   Menu,
   ArrowLeft,
@@ -49,6 +50,7 @@ const sidebarItems = [
   { icon: BarChart3, label: 'Analytics', path: '/admin/analytics', permission: 'manage_settings' },
   { icon: Mail, label: 'Contact Messages', path: '/admin/messages', permission: 'manage_comments' },
   { icon: Eye, label: 'Visitor Log', path: '/admin/visitors', permission: null },
+  { icon: Bell, label: 'Notifications', path: '/admin/notifications', permission: 'manage_users' },
   { icon: Plug, label: 'API Management', path: '/admin/api', permission: 'manage_tokens' },
 ];
 

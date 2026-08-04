@@ -6,6 +6,7 @@ const useSettingsStore = create((set) => ({
   premiumEnabled: true,
   adsEnabled: false,
   freeEpisodesCount: 3,
+  forumEnabled: true,
   // Ad / VAST config
   adVideoUrl: '',
   vastTagUrl: '',
@@ -23,6 +24,7 @@ const useSettingsStore = create((set) => ({
         premiumEnabled: d.premium_enabled?.value !== '0' && d.premium_enabled?.value !== false,
         adsEnabled: d.ads_enabled?.value === '1' || d.ads_enabled?.value === true,
         freeEpisodesCount: parseInt(d.free_episodes_count?.value) || 3,
+        forumEnabled: d.forum_enabled?.value === undefined ? true : d.forum_enabled?.value !== '0' && d.forum_enabled?.value !== false,
         fetched: true,
         loading: false,
       };

@@ -26,6 +26,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import DashboardPage from './pages/DashboardPage';
+import NotificationsPage from './pages/NotificationsPage';
 import ApiDocsPage from './pages/ApiDocsPage';
 import UserProfilePage from './pages/UserProfilePage';
 import FaqPage from './pages/FaqPage';
@@ -55,6 +56,7 @@ import AdminApi from './pages/admin/AdminApi';
 import AdminBadges from './pages/admin/AdminBadges';
 import AdminMessages from './pages/admin/AdminMessages';
 import AdminVisitors from './pages/admin/AdminVisitors';
+import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminMangaImport from './pages/admin/AdminMangaImport';
 import AdminManga from './pages/admin/AdminManga';
 import CreatorManga from './pages/creator/CreatorManga';
@@ -213,6 +215,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
               </Route>
             </Route>
 
@@ -246,6 +249,7 @@ function App() {
               <Route path="/admin/badges" element={<AdminBadges />} />
               <Route path="/admin/messages" element={<AdminMessages />} />
               <Route path="/admin/visitors" element={<AdminVisitors />} />
+              <Route path="/admin/notifications" element={<AdminNotifications />} />
             </Route>
 
             {/* Moderator Routes (uses same admin layout) */}

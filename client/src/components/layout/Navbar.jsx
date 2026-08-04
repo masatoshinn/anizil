@@ -247,7 +247,7 @@ export default function Navbar() {
                           notifications.map((n) => (
                             <button
                               key={n.id}
-                              onClick={() => { setNotifOpen(false); navigate('/dashboard'); }}
+                              onClick={() => { setNotifOpen(false); navigate(n.link || '/dashboard'); }}
                               className={`w-full text-left px-4 py-3 hover:bg-panel-hover transition-colors ${!n.is_read ? 'bg-[#0ea5e9]/5' : ''}`}
                             >
                               <p className={`text-sm ${!n.is_read ? 'text-text-primary font-medium' : 'text-text-muted'}`}>{n.title}</p>
@@ -257,6 +257,12 @@ export default function Navbar() {
                           ))
                         )}
                       </div>
+                      <button
+                        onClick={() => { setNotifOpen(false); navigate('/notifications'); }}
+                        className="w-full text-center py-2.5 text-xs font-medium text-[#0ea5e9] hover:bg-panel-hover transition-colors border-t border-border-custom"
+                      >
+                        View all notifications
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
