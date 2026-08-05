@@ -3,6 +3,10 @@ const { getPool } = require('../config/database');
 
 const router = express.Router();
 
+// Cache the generated sitemap in memory for an hour so the heavy queries and
+// large XML build don't run on every request (avoid web-server timeouts).
+const sitemapCache = new Map(); // baseUrl -> { body, ts }
+
 // Static, always-present routes (Client-side SPA pages)
 const STATIC_PAGES = [
   '/', '/manga', '/genres', '/schedule', '/forum', '/shop', '/leaderboard',
@@ -38,8 +42,14 @@ function getBaseUrl(req) {
 // Generate and serve the XML sitemap for Google Search Console.
 router.get('/sitemap.xml', async (req, res) => {
   try {
-    const pool = await getPool();
     const baseUrl = getBaseUrl(req);
+    const cached = sitemapCache.get(baseUrl);
+    if (cached && Date.now() - cached.ts < 3600000) {
+      res.header('Content-Type', 'application/xml; charset=utf-8');
+      return res.send(cached.body);
+    }
+
+    const pool = await getPool();
     const entries = [];
 
     for (const page of STATIC_PAGES) {
@@ -81,12 +91,13 @@ router.get('/sitemap.xml', async (req, res) => {
     }
 
     res.header('Content-Type', 'application/xml; charset=utf-8');
-    res.send(
+    const body =
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n` +
       entries.join('\n') +
-      `\n</urlset>`
-    );
+      `\n</urlset>`;
+    sitemapCache.set(baseUrl, { body, ts: Date.now() });
+    res.send(body);
   } catch (error) {
     console.error('Sitemap generation error:', error);
     res.status(500).type('text/plain').send('Sitemap generation failed');

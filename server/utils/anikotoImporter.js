@@ -1,4 +1,4 @@
-const { generateSlug } = require('./helpers');
+const { generateSlug, fetchWithTimeout } = require('./helpers');
 
 // Full import of an anime (with all episodes + sources) from the Anikoto API.
 // Used by the admin import route and by auto-import when a user watches an
@@ -10,7 +10,7 @@ async function importAnikotoAnime(pool, anikoto_id, userId = null, is_premium = 
     return { alreadyImported: true, id: existing[0].id };
   }
 
-  const response = await fetch(`https://anikotoapi.site/series/${anikoto_id}`);
+  const response = await fetchWithTimeout(`https://anikotoapi.site/series/${anikoto_id}`, {}, 15000);
   if (!response.ok) {
     throw new Error(`Anikoto API error: ${response.statusText}`);
   }

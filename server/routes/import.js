@@ -2,7 +2,7 @@ const express = require('express');
 const { getPool } = require('../config/database');
 const auth = require('../middleware/auth');
 const { adminAuth, requirePermission } = require('../middleware/adminAuth');
-const { generateSlug, delay } = require('../utils/helpers');
+const { generateSlug, delay, fetchWithTimeout } = require('../utils/helpers');
 const { importAnikotoAnime } = require('../utils/anikotoImporter');
 const { importLimiter } = require('../middleware/rateLimit');
 const { searchMangaDex, getMangaDexInfo, getMangaChapters, importMangaIntoDb } = require('../utils/mangaImporter');
@@ -11,13 +11,13 @@ const router = express.Router();
 
 router.use(auth, adminAuth);
 
-const ANIZEN_API_URL = process.env.ANIZEN_API_URL || 'https://api.zenime.me';
+const ANIZEN_API_URL = process.env.ANIZEN_API_URL || 'https://api.anizen.tr';
 
 // Fetch JSON from the Anizen API and throw on error responses.
 async function anizenFetch(path) {
-  const response = await fetch(`${ANIZEN_API_URL}${path}`, {
+  const response = await fetchWithTimeout(`${ANIZEN_API_URL}${path}`, {
     headers: { 'Accept': 'application/json' }
-  });
+  }, 12000);
   if (!response.ok) throw new Error(`Anizen API error: ${response.statusText}`);
   const data = await response.json();
   if (data.success === false && !data.results) throw new Error('Anizen API returned error');
@@ -27,7 +27,7 @@ async function anizenFetch(path) {
 // Check Anikoto API status
 router.get('/anikoto/status', async (req, res) => {
   try {
-    const response = await fetch('https://anikotoapi.site/recent-anime?page=1&per_page=1');
+    const response = await fetchWithTimeout('https://anikotoapi.site/recent-anime?page=1&per_page=1', {}, 8000);
     const data = await response.json();
     res.json({ success: true, online: data.ok === true });
   } catch (error) {
@@ -41,7 +41,7 @@ router.get('/anikoto/search', async (req, res) => {
     const { q, page = 1 } = req.query;
     if (!q) return res.json({ success: true, data: { anime: [], pagination: {} } });
     // Use the Anikoto search endpoint directly
-    const response = await fetch(`https://anikotoapi.site/search?q=${encodeURIComponent(q)}`);
+    const response = await fetchWithTimeout(`https://anikotoapi.site/search?q=${encodeURIComponent(q)}`, {}, 8000);
     const data = await response.json();
     const animeList = data.data || [];
     const pool = await getPool();
@@ -65,9 +65,9 @@ router.get('/anikoto/browse', async (req, res) => {
     // Try recent first, then search if q is provided
     let response;
     if (req.query.q) {
-      response = await fetch(`https://anikotoapi.site/search?q=${encodeURIComponent(req.query.q)}`);
+      response = await fetchWithTimeout(`https://anikotoapi.site/search?q=${encodeURIComponent(req.query.q)}`, {}, 8000);
     } else {
-      response = await fetch(`https://anikotoapi.site/recent-anime?page=${page}&per_page=${per_page}`);
+      response = await fetchWithTimeout(`https://anikotoapi.site/recent-anime?page=${page}&per_page=${per_page}`, {}, 8000);
     }
     const data = await response.json();
     const animeList = data.data || [];

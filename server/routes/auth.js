@@ -6,7 +6,7 @@ const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const { body, validationResult } = require('express-validator');
 const { getPool } = require('../config/database');
 const auth = require('../middleware/auth');
-const { generateToken } = require('../utils/helpers');
+const { generateToken, fetchWithTimeout } = require('../utils/helpers');
 const { sendPasswordReset, sendVerification, mailEnabled } = require('../utils/mailer');
 
 const router = express.Router();
@@ -154,7 +154,7 @@ router.post('/register', [
     // Auto-assign random anime avatar
     let avatar = null;
     try {
-      const avResponse = await fetch('https://anikotoapi.site/recent-anime?page=1&per_page=50');
+      const avResponse = await fetchWithTimeout('https://anikotoapi.site/recent-anime?page=1&per_page=50', {}, 8000);
       if (avResponse.ok) {
         const avData = await avResponse.json();
         const avList = avData.data || [];

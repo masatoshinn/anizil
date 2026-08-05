@@ -1,6 +1,6 @@
 const express = require('express');
 const { getPool } = require('../config/database');
-const { paginate } = require('../utils/helpers');
+const { paginate, fetchWithTimeout } = require('../utils/helpers');
 const auth = require('../middleware/auth');
 const { importLimiter } = require('../middleware/rateLimit');
 const { importAnikotoAnime } = require('../utils/anikotoImporter');
@@ -243,7 +243,7 @@ router.get('/:slug', async (req, res) => {
       if (anime.length === 0) {
         // Not in DB yet - fetch from external API
         try {
-          const extRes = await fetch(`https://anikotoapi.site/series/${anikotoId}`);
+          const extRes = await fetchWithTimeout(`https://anikotoapi.site/series/${anikotoId}`, {}, 8000);
           if (extRes.ok) {
             const extData = await extRes.json();
             if (extData.ok && extData.data) {
@@ -441,7 +441,7 @@ router.get('/external/recent', async (req, res) => {
 router.get('/external/series/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const response = await fetch(`https://anikotoapi.site/series/${id}`);
+    const response = await fetchWithTimeout(`https://anikotoapi.site/series/${id}`, {}, 8000);
     if (!response.ok) {
       return res.status(500).json({ success: false, message: 'Anikoto API error' });
     }
@@ -457,7 +457,7 @@ router.get('/external/search', async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) return res.json({ success: true, data: { anime: [] } });
-    const response = await fetch(`https://anikotoapi.site/search?q=${encodeURIComponent(q)}`);
+    const response = await fetchWithTimeout(`https://anikotoapi.site/search?q=${encodeURIComponent(q)}`, {}, 8000);
     if (!response.ok) return res.status(500).json({ success: false, message: 'Anikoto API error' });
     const data = await response.json();
     res.json({ success: true, data });

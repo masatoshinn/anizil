@@ -42,10 +42,30 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// fetch() with an abort timeout so dead/slow upstream APIs fail fast instead
+// of hanging the request (which causes web-server "Request Timeout" errors).
+async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      const e = new Error(`Fetch timeout after ${timeoutMs}ms: ${url}`);
+      e.code = 'FETCH_TIMEOUT';
+      throw e;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 module.exports = {
   generateSlug,
   generateToken,
   generateRedeemCode,
   paginate,
-  delay
+  delay,
+  fetchWithTimeout
 };

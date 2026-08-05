@@ -1,11 +1,11 @@
-const { generateSlug } = require('./helpers');
+const { generateSlug, fetchWithTimeout } = require('./helpers');
 
 const MANGA_BASE = 'https://api.mangadex.org';
 const UA = { 'User-Agent': 'anizil/1.0 (anime + manga portal)' };
 
 // Fetch and parse a MangaDex API endpoint, throwing on errors
 async function mangaDexFetch(path) {
-  const response = await fetch(`${MANGA_BASE}${path}`, { headers: UA });
+  const response = await fetchWithTimeout(`${MANGA_BASE}${path}`, { headers: UA }, 12000);
   if (!response.ok) {
     throw new Error(`MangaDex API error: ${response.status} ${response.statusText}`);
   }
