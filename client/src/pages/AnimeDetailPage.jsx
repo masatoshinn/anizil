@@ -13,7 +13,7 @@ import AnimeCard from '../components/common/AnimeCard';
 import Skeleton from '../components/common/Skeleton';
 import GenreTag from '../components/common/GenreTag';
 import RatingSection from '../components/common/RatingSection';
-import { cn, formatDate, formatNumber, getStatusColor } from '../lib/utils';
+import { cn, formatDate, formatNumber, getStatusColor, glowNameClass } from '../lib/utils';
 import BadgeIcon from '../components/common/BadgeIcon';
 import useSEO from '../hooks/useSEO';
 import api from '../lib/api';
@@ -505,7 +505,10 @@ export default function AnimeDetailPage() {
                           {comment.user_id ? (
                             <Link
                               to={`/user/${comment.user_id}`}
-                              className="text-text-primary text-sm font-medium hover:text-primary transition-colors"
+                              className={cn(
+                                'text-text-primary text-sm font-medium hover:text-primary transition-colors',
+                                glowNameClass(comment.user_role)
+                              )}
                               style={comment.user_name_color
                                 ? comment.user_name_color.startsWith('linear-gradient')
                                   ? { color: 'transparent', backgroundImage: comment.user_name_color, WebkitBackgroundClip: 'text', backgroundClip: 'text' }
@@ -516,7 +519,10 @@ export default function AnimeDetailPage() {
                             </Link>
                           ) : (
                             <span
-                              className="text-text-primary text-sm font-medium"
+                              className={cn(
+                                'text-text-primary text-sm font-medium',
+                                glowNameClass(comment.user_role)
+                              )}
                               style={comment.user_name_color
                                 ? comment.user_name_color.startsWith('linear-gradient')
                                   ? { color: 'transparent', backgroundImage: comment.user_name_color, WebkitBackgroundClip: 'text', backgroundClip: 'text' }

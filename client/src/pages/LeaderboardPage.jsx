@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Trophy, Crown, Loader2 } from 'lucide-react';
 import api from '../lib/api';
+import { glowNameClass } from '../lib/utils';
 import useSEO from '../hooks/useSEO';
 import Pagination from '../components/common/Pagination';
 import BadgeIcon from '../components/common/BadgeIcon';
@@ -123,7 +124,7 @@ export default function LeaderboardPage() {
                     </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Link to={`/user/${user.id}`} className="text-text-primary font-medium text-sm truncate hover:text-[#0ea5e9] transition-colors">
+                        <Link to={`/user/${user.id}`} className={`text-text-primary font-medium text-sm truncate hover:text-[#0ea5e9] transition-colors ${glowNameClass(user.role)}`}>
                           {user.name}
                         </Link>
                         {user.badges && user.badges.slice(0, 3).map((b) => (

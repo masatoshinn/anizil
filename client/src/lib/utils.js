@@ -99,8 +99,7 @@ export function getStatusColor(status) {
 }
 
 // Returns a deterministic Tailwind color class for a genre name
-export function getGenreColor(genre) {
-  const colors = [
+export function getGenreColor(genre) {  const colors = [
     'bg-red-500/20 text-red-300',
     'bg-blue-500/20 text-blue-300',
     'bg-green-500/20 text-green-300',
@@ -121,4 +120,16 @@ export function getGenreColor(genre) {
   }
 
   return colors[Math.abs(hash) % colors.length];
+}
+
+const STAFF_ROLES = ['super_admin', 'content_admin', 'moderator', 'creator'];
+
+// Returns true when the given role is a site staff role (admin/mod/creator)
+export function isStaffRole(role) {
+  return STAFF_ROLES.includes(role);
+}
+
+// Returns the glow CSS class for staff usernames, or '' for regular users
+export function glowNameClass(role) {
+  return isStaffRole(role) ? 'glow-name' : '';
 }

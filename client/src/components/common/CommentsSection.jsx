@@ -6,6 +6,7 @@ import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 import BadgeIcon from './BadgeIcon';
+import { glowNameClass } from '../../lib/utils';
 
 const REACTIONS = ['👍', '❤️', '😂', '😢', '🔥'];
 
@@ -218,13 +219,13 @@ export default function CommentsSection({ animeId, episodeId }) {
                     {comment.user_id ? (
                       <Link
                         to={`/user/${comment.user_id}`}
-                        className="text-text-primary text-sm font-medium hover:text-[#0ea5e9] transition-colors"
+                        className={`text-text-primary text-sm font-medium hover:text-[#0ea5e9] transition-colors ${glowNameClass(comment.user_role)}`}
                         style={nameStyle(comment.user_name_color)}
                       >
                         {comment.user_name || 'Anonymous'}
                       </Link>
                     ) : (
-                      <span className="text-text-primary text-sm font-medium" style={nameStyle(comment.user_name_color)}>
+                      <span className={`text-text-primary text-sm font-medium ${glowNameClass(comment.user_role)}`} style={nameStyle(comment.user_name_color)}>
                         {comment.user_name || 'Anonymous'}
                       </span>
                     )}
@@ -315,13 +316,13 @@ export default function CommentsSection({ animeId, episodeId }) {
                               {reply.user_id ? (
                                 <Link
                                   to={`/user/${reply.user_id}`}
-                                  className="text-text-primary text-xs font-medium hover:text-[#0ea5e9] transition-colors"
+                                  className={`text-text-primary text-xs font-medium hover:text-[#0ea5e9] transition-colors ${glowNameClass(reply.user_role)}`}
                                   style={nameStyle(reply.user_name_color)}
                                 >
                                   {reply.user_name || 'Anonymous'}
                                 </Link>
                               ) : (
-                                <span className="text-text-primary text-xs font-medium" style={nameStyle(reply.user_name_color)}>
+                                <span className={`text-text-primary text-xs font-medium ${glowNameClass(reply.user_role)}`} style={nameStyle(reply.user_name_color)}>
                                   {reply.user_name || 'Anonymous'}
                                 </span>
                               )}

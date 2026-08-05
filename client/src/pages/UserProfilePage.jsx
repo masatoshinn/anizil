@@ -10,7 +10,7 @@ import api from '../lib/api';
 import useSEO from '../hooks/useSEO';
 import useAuthStore from '../store/authStore';
 import BadgeIcon from '../components/common/BadgeIcon';
-import { cn } from '../lib/utils';
+import { cn, glowNameClass } from '../lib/utils';
 
 const roleLabels = {
   super_admin: 'Super Admin',
@@ -212,7 +212,7 @@ export default function UserProfilePage() {
               <div className="text-center sm:text-left flex-1 min-w-0">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1.5">
                   <h1
-                    className="text-2xl sm:text-3xl font-bold text-[#f8fafc] truncate"
+                    className={cn('text-2xl sm:text-3xl font-bold text-[#f8fafc] truncate', glowNameClass(user.role))}
                     style={user.active_name_color
                       ? user.active_name_color.startsWith('linear-gradient')
                         ? { color: 'transparent', backgroundImage: user.active_name_color, WebkitBackgroundClip: 'text', backgroundClip: 'text' }

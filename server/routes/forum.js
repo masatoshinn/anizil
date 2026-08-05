@@ -32,7 +32,7 @@ router.get('/posts', async (req, res) => {
     const total = countResult[0].total;
 
     const [posts] = await pool.query(
-      `SELECT fp.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level,
+      `SELECT fp.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level,
         (SELECT COUNT(*) FROM forum_replies WHERE post_id = fp.id) as reply_count
        FROM forum_posts fp
        JOIN users u ON fp.user_id = u.id
@@ -70,7 +70,7 @@ router.get('/posts/:id', async (req, res) => {
     const { id } = req.params;
 
     const [posts] = await pool.query(
-      `SELECT fp.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+      `SELECT fp.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level
        FROM forum_posts fp
        JOIN users u ON fp.user_id = u.id
        WHERE fp.id = ?`,
@@ -87,7 +87,7 @@ router.get('/posts/:id', async (req, res) => {
     await pool.query('UPDATE forum_posts SET views = views + 1 WHERE id = ?', [id]);
 
     const [replies] = await pool.query(
-      `SELECT fr.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+      `SELECT fr.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level
        FROM forum_replies fr
        JOIN users u ON fr.user_id = u.id
        WHERE fr.post_id = ?
@@ -149,7 +149,7 @@ router.post('/posts', auth, [
     );
 
     const [newPost] = await pool.query(
-      `SELECT fp.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+      `SELECT fp.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level
        FROM forum_posts fp
        JOIN users u ON fp.user_id = u.id
        WHERE fp.id = ?`,
@@ -206,7 +206,7 @@ router.post('/posts/:id/reply', auth, [
     );
 
     const [newReply] = await pool.query(
-      `SELECT fr.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+      `SELECT fr.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level
        FROM forum_replies fr
        JOIN users u ON fr.user_id = u.id
        WHERE fr.id = ?`,
@@ -321,7 +321,7 @@ router.put('/posts/:id', auth, [
     await pool.query(`UPDATE forum_posts SET ${updates.join(', ')} WHERE id = ?`, params);
 
     const [updatedPost] = await pool.query(
-      `SELECT fp.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+      `SELECT fp.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level
        FROM forum_posts fp JOIN users u ON fp.user_id = u.id
        WHERE fp.id = ?`, [id]
     );
@@ -386,7 +386,7 @@ router.put('/replies/:id', auth, [
     await pool.query('UPDATE forum_replies SET content = ?, updated_at = NOW() WHERE id = ?', [content, id]);
 
     const [updatedReply] = await pool.query(
-      `SELECT fr.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+      `SELECT fr.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level
        FROM forum_replies fr JOIN users u ON fr.user_id = u.id
        WHERE fr.id = ?`, [id]
     );

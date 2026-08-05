@@ -67,7 +67,7 @@ router.get('/', async (req, res) => {
     const total = countResult[0].total;
 
     const [comments] = await pool.query(
-      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
+      `SELECT c.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
         pf.name as frame_name, pf.image_url as frame_image, pf.border_color as frame_color
        FROM comments c
        JOIN users u ON c.user_id = u.id
@@ -80,7 +80,7 @@ router.get('/', async (req, res) => {
 
     for (let comment of comments) {
       const [replies] = await pool.query(
-        `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
+        `SELECT c.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
           pf.name as frame_name, pf.image_url as frame_image, pf.border_color as frame_color
          FROM comments c
          JOIN users u ON c.user_id = u.id
@@ -161,7 +161,7 @@ router.get('/:episodeId', async (req, res) => {
     const total = countResult[0].total;
 
     const [comments] = await pool.query(
-      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_name_color
+      `SELECT c.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level, u.active_name_color
        FROM comments c
        JOIN users u ON c.user_id = u.id
        WHERE c.episode_id = ? AND c.status = 'approved' AND c.parent_id IS NULL
@@ -172,7 +172,7 @@ router.get('/:episodeId', async (req, res) => {
 
     for (let comment of comments) {
       const [replies] = await pool.query(
-        `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_name_color
+        `SELECT c.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level, u.active_name_color
          FROM comments c
          JOIN users u ON c.user_id = u.id
          WHERE c.parent_id = ? AND c.status = 'approved'
@@ -280,7 +280,7 @@ router.post('/', auth, [
     );
 
     const [newComment] = await pool.query(
-      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
+      `SELECT c.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level, u.active_frame_id, u.active_name_color,
         pf.name as frame_name, pf.image_url as frame_image, pf.border_color as frame_color
        FROM comments c
        JOIN users u ON c.user_id = u.id
@@ -394,7 +394,7 @@ router.put('/:id', auth, [
     await pool.query('UPDATE comments SET content = ? WHERE id = ?', [content, id]);
 
     const [updatedComment] = await pool.query(
-      `SELECT c.*, u.name as user_name, u.avatar as user_avatar, u.level as user_level
+      `SELECT c.*, u.name as user_name, u.role as user_role, u.avatar as user_avatar, u.level as user_level
        FROM comments c
        JOIN users u ON c.user_id = u.id
        WHERE c.id = ?`,

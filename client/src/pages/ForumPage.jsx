@@ -9,7 +9,7 @@ import useSettingsStore from '../store/settingsStore';
 import Skeleton from '../components/common/Skeleton';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
-import { timeAgo, cn } from '../lib/utils';
+import { timeAgo, cn, glowNameClass } from '../lib/utils';
 import api from '../lib/api';
 
 const CATEGORIES = ['All', 'General', 'Recommendations', 'Discussion', 'Help'];
@@ -221,7 +221,7 @@ export default function ForumPage() {
                       </div>
                       <h3 className="text-[#f8fafc] font-semibold mb-1 truncate">{thread.title}</h3>
                       <div className="flex items-center gap-4 text-xs text-[#94a3b8]">
-                        <span className="flex items-center gap-1">
+                        <span className={cn('flex items-center gap-1', glowNameClass(thread.user_role))}>
                           <User className="w-3 h-3" /> {thread.user_name || 'Anonymous'}
                         </span>
                         <span className="flex items-center gap-1">
@@ -352,7 +352,7 @@ export default function ForumPage() {
                       <div className="w-7 h-7 rounded-full bg-[#0ea5e9]/20 flex items-center justify-center text-[#0ea5e9] text-xs font-bold">
                         {(threadDetail?.user_name || selectedThread.user_name || 'U')[0].toUpperCase()}
                       </div>
-                      <span className="text-[#f8fafc] text-sm font-medium">
+                      <span className={cn('text-[#f8fafc] text-sm font-medium', glowNameClass(threadDetail?.user_role || selectedThread.user_role))}>
                         {threadDetail?.user_name || selectedThread.user_name || 'Anonymous'}
                       </span>
                       <span className="text-[#94a3b8] text-xs">{timeAgo(threadDetail?.created_at || selectedThread.created_at)}</span>
@@ -374,7 +374,7 @@ export default function ForumPage() {
                             <div className="w-6 h-6 rounded-full bg-[#0ea5e9]/20 flex items-center justify-center text-[#0ea5e9] text-xs font-bold">
                               {(reply.user_name || 'U')[0].toUpperCase()}
                             </div>
-                            <span className="text-[#f8fafc] text-xs font-medium">{reply.user_name || 'Anonymous'}</span>
+                            <span className={cn('text-[#f8fafc] text-xs font-medium', glowNameClass(reply.user_role))}>{reply.user_name || 'Anonymous'}</span>
                             <span className="text-[#94a3b8] text-xs">{timeAgo(reply.created_at)}</span>
                           </div>
                           <p className="text-[#94a3b8] text-sm ml-8">{reply.content}</p>
