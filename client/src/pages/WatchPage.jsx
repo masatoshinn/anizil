@@ -113,22 +113,33 @@ export default function WatchPage() {
     }
   }, [currentAnime?.id, epNum]);
 
+  // Builds MegaPlay stream URLs from the AniList id OR the MAL id so every
+  // episode gets a playable embed even when the DB has no stored source.
+  const buildMegaPlaySources = (epNum) => {
+    const idRef = currentAnime?.anilist_id
+      ? { kind: 'ani', id: currentAnime.anilist_id }
+      : currentAnime?.mal_id
+        ? { kind: 'mal', id: currentAnime.mal_id }
+        : null;
+    if (!idRef) return [];
+    const wantsDub = currentAnime?.language === 'dub' || currentAnime?.language === 'both';
+    const sources = [
+      { language: 'sub', server_name: 'MegaPlay', video_url: `https://megaplay.buzz/stream/${idRef.kind}/${idRef.id}/${epNum}/sub`, source_type: 'embed' },
+    ];
+    if (wantsDub) {
+      sources.push({ language: 'dub', server_name: 'MegaPlay', video_url: `https://megaplay.buzz/stream/${idRef.kind}/${idRef.id}/${epNum}/dub`, source_type: 'embed' });
+    }
+    return sources;
+  };
+
   // Loads the streaming sources for the current episode
   const loadEpisodeSource = async () => {
     try {
       const ep = episodes.find(e => (e.episode_number || e.number) === epNum);
       if (!ep) {
-        // If no episode found in DB, generate megaPlay.buzz URL directly
-        if (currentAnime?.anilist_id) {
-          const anilistId = currentAnime.anilist_id;
-          const generatedSources = [
-            { language: 'sub', server_name: 'MegaPlay', video_url: `https://megaplay.buzz/stream/ani/${anilistId}/${epNum}/sub`, source_type: 'embed' },
-          ];
-          if (currentAnime.language === 'dub' || currentAnime.language === 'both') {
-            generatedSources.push({ language: 'dub', server_name: 'MegaPlay', video_url: `https://megaplay.buzz/stream/ani/${anilistId}/${epNum}/dub`, source_type: 'embed' });
-          }
-          setEpisodeSources(generatedSources);
-        }
+        // If no episode found in DB, generate a megaPlay.buzz URL directly
+        const generatedSources = buildMegaPlaySources(epNum);
+        if (generatedSources.length > 0) setEpisodeSources(generatedSources);
         return;
       }
       // External episodes have sources directly
@@ -142,26 +153,16 @@ export default function WatchPage() {
       setEpisodeData(data);
       setEpisodeSources(data.sources || []);
 
-      // If no sources in DB, try to generate megaPlay.buzz URL
-      if ((!data.sources || data.sources.length === 0) && currentAnime?.anilist_id) {
-        const anilistId = currentAnime.anilist_id;
-        const generatedSources = [
-          { language: 'sub', server_name: 'MegaPlay', video_url: `https://megaplay.buzz/stream/ani/${anilistId}/${epNum}/sub`, source_type: 'embed' },
-        ];
-        if (currentAnime.language === 'dub' || currentAnime.language === 'both') {
-          generatedSources.push({ language: 'dub', server_name: 'MegaPlay', video_url: `https://megaplay.buzz/stream/ani/${anilistId}/${epNum}/dub`, source_type: 'embed' });
-        }
-        setEpisodeSources(generatedSources);
+      // If no sources in DB, try to generate a megaPlay.buzz URL
+      if (!data.sources || data.sources.length === 0) {
+        const generatedSources = buildMegaPlaySources(epNum);
+        if (generatedSources.length > 0) setEpisodeSources(generatedSources);
       }
     } catch (err) {
       console.error('Failed to load episode source:', err);
       // Fallback to megaPlay.buzz
-      if (currentAnime?.anilist_id) {
-        const anilistId = currentAnime.anilist_id;
-        setEpisodeSources([
-          { language: 'sub', server_name: 'MegaPlay', video_url: `https://megaplay.buzz/stream/ani/${anilistId}/${epNum}/sub`, source_type: 'embed' },
-        ]);
-      }
+      const generatedSources = buildMegaPlaySources(epNum);
+      if (generatedSources.length > 0) setEpisodeSources(generatedSources);
     }
   };
 
@@ -214,7 +215,12 @@ export default function WatchPage() {
   // Get available servers from sources
   const availableLanguages = [...new Set(episodeSources.map(s => s.language))];
   const currentSource = episodeSources.find(s => s.language === server) || episodeSources[0];
-  const videoSrc = currentSource?.video_url || '';
+  const rawVideoSrc = currentSource?.video_url || '';
+  // Prefer the iframe-friendly embed page_link when available. Many providers
+  // (e.g. MegaPlay/MegaBox) block cross-origin framing of their /stream pages,
+  // so embedding the generic stream URL makes episodes appear "not loading"
+  // even though the API returned a working video.
+  const videoSrc = currentSource?.embed_link || rawVideoSrc;
   const sourceType = /\.(m3u8)(\?|$)/i.test(videoSrc)
     ? 'hls'
     : /\.(mp4|webm|ogg)(\?|$)/i.test(videoSrc)
