@@ -6,3 +6,9 @@ build/
 .DS_Store
 .vscode/
 .idea/
+
+# Native mobile app is kept out of the public repo
+/mobile/
+
+# Deploy bundle is regenerated locally each time; never committed
+server/server.zip

@@ -8,6 +8,7 @@ const { getPool } = require('../config/database');
 const auth = require('../middleware/auth');
 const { generateToken, fetchWithTimeout } = require('../utils/helpers');
 const { sendPasswordReset, sendVerification, mailEnabled } = require('../utils/mailer');
+const { authLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -88,6 +89,7 @@ router.get('/google/callback',
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
@@ -101,10 +103,10 @@ router.get('/google/callback',
 );
 
 // Register a new user with optional referral and verification email.
-router.post('/register', [
+router.post('/register', authLimiter, [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
 ], async (req, res) => {
   try {
     const pool = await getPool();
@@ -168,7 +170,7 @@ router.post('/register', [
       avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}${Date.now()}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
     }
 
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const referralCode = generateToken().substring(0, 8).toUpperCase();
@@ -194,6 +196,7 @@ router.post('/register', [
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -225,7 +228,7 @@ router.post('/register', [
 });
 
 // Authenticate a user and issue a JWT session cookie.
-router.post('/login', [
+router.post('/login', authLimiter, [
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required')
 ], async (req, res) => {
@@ -275,6 +278,7 @@ router.post('/login', [
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -315,6 +319,9 @@ router.post('/login', [
 router.post('/logout', (req, res) => {
   res.cookie('token', '', {
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
     expires: new Date(0)
   });
 
@@ -547,7 +554,7 @@ router.post('/reset-password', [
       });
     }
 
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     await pool.query(

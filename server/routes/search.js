@@ -6,6 +6,8 @@ const router = express.Router();
 
 // In-memory cache for external (Anikoto) search results
 const extCache = new Map();
+// Full-response cache so repeated searches hit neither MySQL nor Anikoto.
+const respCache = new Map();
 
 // Search local anime and merge in non-imported external Anikoto results.
 router.get('/', async (req, res) => {
@@ -20,6 +22,10 @@ router.get('/', async (req, res) => {
         message: 'Search query is required'
       });
     }
+
+    const respKey = `search:${q.trim().toLowerCase()}:${pagination.page}:${pagination.limit}`;
+    const cached = respCache.get(respKey);
+    if (cached && Date.now() - cached.ts < 45000) return res.json(cached.data);
 
     const searchTerm = `%${q.trim()}%`;
 
@@ -115,7 +121,7 @@ router.get('/', async (req, res) => {
     const merged = [...anime, ...externalAnime];
     const mergedTotal = total + externalAnime.length;
 
-    res.json({
+    const payload = {
       success: true,
       data: {
         anime: merged,
@@ -129,7 +135,9 @@ router.get('/', async (req, res) => {
         },
         query: q.trim()
       }
-    });
+    };
+    respCache.set(respKey, { data: payload, ts: Date.now() });
+    res.json(payload);
   } catch (error) {
     console.error('Search error:', error);
     res.status(500).json({

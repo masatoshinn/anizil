@@ -24,6 +24,9 @@ function setCache(key, data) {
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();
+    const cacheKey = `list:${req.originalUrl}`;
+    const cached = getCached(cacheKey, 60000);
+    if (cached) return res.json(cached);
     const { page, limit, offset } = paginate(req.query.page, req.query.limit);
     const { genre, status, sort, search, language, year, season } = req.query;
 
@@ -80,7 +83,7 @@ router.get('/', async (req, res) => {
       [...params, limit, offset]
     );
 
-    res.json({
+    const result = {
       success: true,
       data: {
         anime,
@@ -91,7 +94,9 @@ router.get('/', async (req, res) => {
           pages: Math.ceil(total / limit)
         }
       }
-    });
+    };
+    setCache(cacheKey, result);
+    res.json(result);
   } catch (error) {
     console.error('Get anime list error:', error);
     res.status(500).json({
@@ -146,6 +151,8 @@ router.get('/trending', async (req, res) => {
 // Return recently updated anime with their latest episode dates.
 router.get('/recent', async (req, res) => {
   try {
+    const cached = getCached('recent_db', 120000);
+    if (cached) return res.json(cached);
     const pool = await getPool();
     const [anime] = await pool.query(
       `SELECT a.*, 
@@ -155,10 +162,12 @@ router.get('/recent', async (req, res) => {
        LIMIT 20`
     );
 
-    res.json({
+    const result = {
       success: true,
       data: anime
-    });
+    };
+    setCache('recent_db', result);
+    res.json(result);
   } catch (error) {
     console.error('Get recent anime error:', error);
     res.status(500).json({
@@ -171,6 +180,8 @@ router.get('/recent', async (req, res) => {
 // Collect and sort a unique list of all anime genres.
 router.get('/genres', async (req, res) => {
   try {
+    const cached = getCached('genres_db', 600000);
+    if (cached) return res.json(cached);
     const pool = await getPool();
     const [anime] = await pool.query('SELECT genres FROM anime WHERE genres IS NOT NULL AND genres != ""');
 
@@ -186,10 +197,12 @@ router.get('/genres', async (req, res) => {
 
     const genres = Array.from(genreSet).sort();
 
-    res.json({
+    const result = {
       success: true,
       data: genres
-    });
+    };
+    setCache('genres_db', result);
+    res.json(result);
   } catch (error) {
     console.error('Get genres error:', error);
     res.status(500).json({
@@ -202,6 +215,8 @@ router.get('/genres', async (req, res) => {
 // Build a weekly broadcast schedule for ongoing anime.
 router.get('/schedule', async (req, res) => {
   try {
+    const cached = getCached('schedule_db', 600000);
+    if (cached) return res.json(cached);
     const pool = await getPool();
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const schedule = {};
@@ -214,10 +229,12 @@ router.get('/schedule', async (req, res) => {
       schedule[day] = anime;
     }
 
-    res.json({
+    const result = {
       success: true,
       data: schedule
-    });
+    };
+    setCache('schedule_db', result);
+    res.json(result);
   } catch (error) {
     console.error('Get schedule error:', error);
     res.status(500).json({
@@ -441,12 +458,17 @@ router.get('/external/recent', async (req, res) => {
 router.get('/external/series/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const cacheKey = `ext_series:${id}`;
+    const cached = getCached(cacheKey, 600000);
+    if (cached) return res.json(cached);
     const response = await fetchWithTimeout(`https://anikotoapi.site/series/${id}`, {}, 8000);
     if (!response.ok) {
       return res.status(500).json({ success: false, message: 'Anikoto API error' });
     }
     const data = await response.json();
-    res.json({ success: true, data });
+    const result = { success: true, data };
+    setCache(cacheKey, result);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -457,10 +479,15 @@ router.get('/external/search', async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) return res.json({ success: true, data: { anime: [] } });
+    const cacheKey = `ext_search:${q}`;
+    const cached = getCached(cacheKey, 300000);
+    if (cached) return res.json(cached);
     const response = await fetchWithTimeout(`https://anikotoapi.site/search?q=${encodeURIComponent(q)}`, {}, 8000);
     if (!response.ok) return res.status(500).json({ success: false, message: 'Anikoto API error' });
     const data = await response.json();
-    res.json({ success: true, data });
+    const result = { success: true, data };
+    setCache(cacheKey, result);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

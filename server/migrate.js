@@ -174,6 +174,16 @@ require('dotenv').config();
       INDEX idx_notif_user (user_id, is_read),
       INDEX idx_notif_user_created (user_id, created_at)
     )`,
+    `CREATE TABLE IF NOT EXISTS api_tokens (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      token VARCHAR(191) NOT NULL,
+      scope ENUM('read','write','admin') DEFAULT 'read',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_api_token (token),
+      INDEX idx_api_tokens_user (user_id)
+    )`,
   ];
 
   for (const sql of stmts) {

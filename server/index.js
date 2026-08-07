@@ -1,4 +1,5 @@
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const passport = require('passport');
@@ -23,6 +24,14 @@ app.use(cookieParser());
 app.use(passport.initialize());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Security headers (CSP disabled so video embeds/CDNs keep working; all other
+// helmet protections like X-Frame-Options, nosniff and HSTS stay enabled).
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
 // Rate limiting
 const { apiLimiter } = require('./middleware/rateLimit');
